@@ -77,8 +77,10 @@ class Simple_Worker
         ));
 
         $return = curl_exec($remote);
-        echo $return;
-        exit();
+
+        /*
+            TODO Check for 200 response
+        */
     }
 
     protected function _setup()

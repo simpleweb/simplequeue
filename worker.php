@@ -109,7 +109,6 @@ class Simple_Worker
 			$this->queue->deleteMessage($message);
 		} else {
 			
-			var_dump($response);
 			echo $status.' - Failed.';
 			$this->queue->deleteMessage($message);
 			

@@ -56,7 +56,7 @@ class Simple_Worker
 
 		$client = new Zend_Http_Client($msg['url']);
         
-		$timeout = $msg['timeout'];
+		$timeout = 30;
 		if(array_key_exists('timeout', $msg)) {
 			$timeout=$msg['timeout'];
 		}
@@ -87,7 +87,7 @@ class Simple_Worker
 		$client->setParameterGet($msg['get']);
 		 
 		if(array_key_exists('post', $msg) && !empty($msg['post'])) {
-			$client->setParameterPost($_POST);
+			$client->setParameterPost($msg['post']);
 		 	$client->setMethod(Zend_Http_Client::POST);
 		} else {
 			$client->setMethod(Zend_Http_Client::GET);
@@ -100,6 +100,7 @@ class Simple_Worker
 			$status = $response->getStatus();
 
 		} catch (Exception $e) {
+			
 			$status = $e->getCode() . ' - ' . $e->getMessage();
 		}
 		
@@ -107,6 +108,8 @@ class Simple_Worker
 			echo '200 - Success (Deleting Message From Queue)';
 			$this->queue->deleteMessage($message);
 		} else {
+			
+			var_dump($response);
 			echo $status.' - Failed.';
 			$this->queue->deleteMessage($message);
 			

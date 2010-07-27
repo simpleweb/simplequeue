@@ -84,7 +84,9 @@ class Simple_Worker
 			$client->setHeaders($key, $value);
 		}
 		
-		$client->setParameterGet($msg['get']);
+		if (array_key_exists('get', $msg)) {
+		    $client->setParameterGet($msg['get']);
+		}
 		 
 		if(array_key_exists('post', $msg) && !empty($msg['post'])) {
 			$client->setParameterPost($msg['post']);

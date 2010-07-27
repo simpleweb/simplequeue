@@ -3,21 +3,13 @@ Simple Queue
 
 ## The simplest way to manage Zend Queues
 
-This is a very simple worker script to manage the zend job queue. It is designed to be used as a standalone script, but currently it's just the class. To run the script create a file called my_worker.php that looks like this:
+Create a configuration file called queue.ini, use the example_config.ini as a template, then run the script from the command line, you'll need the CLI version of PHP installed on the machine you intend to run it from.
 
-    require 'worker.php';
-
-    $worker = Simple_Worker::getInstance('config.ini');
-
-    $worker->receive();
-
-Then run the script from the command line, if you're using OS X then you can try the script using your terminal.
-
-    $ php my_worker.php
+    $ php run.php
 
 ## Licence
 
-Copyright (c) 2010 Chris Mytton
+Copyright (c) 2010 Simpleweb Ltd
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

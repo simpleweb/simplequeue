@@ -11,7 +11,7 @@ class Simple_Worker
 {
     protected $_config;
 
-    function __construct($config)
+    public function __construct($config)
     {
         if (is_array($config)) {
             $this->_config = new Zend_Config($config);
@@ -26,21 +26,31 @@ class Simple_Worker
 
     public function process()
     {
-        echo "Receiving messages...\n";
+        $this->log("Receiving messages...");
 
         while ($messages = $this->queue->receive(10)) {
             if (count($messages) === 0) {
-                echo "No messages found for processing\n";
+                // No messages found for processing;
                 sleep(5);
                 continue;
             }
 
-            echo "Got " . count($messages) . " messages\n";
+            $this->log("Got " . count($messages) . " messages");
             foreach ($messages as $message) {
                 $this->_callJob($message);
             }
         }
     }
+    
+    public function iterateQueues() {
+		
+		$queue = $this->queue;
+
+        foreach ($queue->getQueues() as $name) {
+            $this->log($name);
+        }
+		
+	}
 
     protected function _callJob($message)
     {
@@ -52,7 +62,7 @@ class Simple_Worker
 			$msg['attempt'] += 1;
 		}
 		
-        echo "Attempting to retrieve {$msg['url']}\n";
+        $this->log("Attempting to retrieve {$msg['url']}");
 
 		$client = new Zend_Http_Client($msg['url']);
         
@@ -107,11 +117,11 @@ class Simple_Worker
 		}
 		
    		if($status==200) {
-			echo '200 - Success (Deleting Message From Queue)';
+			$this->log('200 - Success (Deleting Message From Queue)');
 			$this->queue->deleteMessage($message);
 		} else {
 			
-			echo $status.' - Failed.';
+			$this->log("{$status} - Failed.");
 			$this->queue->deleteMessage($message);
 			
 			$maxRetries = 5;
@@ -134,17 +144,14 @@ class Simple_Worker
     	$options = $this->_config->default->toArray();
         $this->queue = new SimpleWeb_Queue(new SimpleWeb_Queue_Adapter_Db($options), $options);
     }
-
-	public function iterateQueues() {
-		
-		$queue = $this->queue;
-
-        foreach ($queue->getQueues() as $name) {
-            echo $name, "\n";
+    
+    protected function log()
+    {
+        $timestamp = date('r');
+        foreach (func_get_args() as $arg) {
+            echo "[{$timestamp}] $arg\n";
         }
-		
-	}
-
+    }
 }
 
 class Simple_Worker_Exception extends Zend_Exception {}

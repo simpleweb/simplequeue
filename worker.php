@@ -141,7 +141,15 @@ class Simple_Worker
 
     protected function _setup()
     {
-    	$options = $this->_config->default->toArray();
+        $config = getenv('SIMPLEQUEUE_CONFIG');
+
+        if (!$config) {
+            $config = 'default';
+        }
+
+        $this->log("Using config {$config}");
+        $options = $this->_config->{$config}->toArray();
+
         $this->queue = new SimpleWeb_Queue(new SimpleWeb_Queue_Adapter_Db($options), $options);
     }
     

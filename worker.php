@@ -71,7 +71,7 @@ class Simple_Worker
 			$timeout=$msg['timeout'];
 		}
 		
-		$client->setConfig(array('timeout' => $timeout, 'maxredirects' => 0));
+		$client->setConfig(array('timeout' => $timeout, 'maxredirects' => 5));
 		
 		//Deal with headers
 		if(!array_key_exists('headers', $msg)) {

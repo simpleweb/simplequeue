@@ -152,7 +152,7 @@ class Simple_Worker
         $this->log("Using config {$config}");
         $options = $this->_config->{$config}->toArray();
 
-        $this->queue = new SimpleWeb_Queue(new SimpleWeb_Queue_Adapter_Db($options), $options);
+        $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     
     protected function log()

@@ -9,7 +9,7 @@
   # Create a new watch for each queue worker
   God.watch do |w|
     w.name = "simplequeue-worker-#{queue}"
-    w.dir = '/home/simpleweb/scripts/simplequeue'
+    w.dir = File.dirname(__FILE__)
     w.interval = 30.seconds # default      
     w.start = "SIMPLEQUEUE_CONFIG=#{queue} php run.php"
     w.start_grace = 10.seconds

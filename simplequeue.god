@@ -5,7 +5,7 @@
 # run with: god -c /path/to/simplequeue.god -D
 
 
-%w{contactzilla webhooks}.each do |queue|
+%w{default webhooks}.each do |queue|
   # Create a new watch for each queue worker
   God.watch do |w|
     w.name = "simplequeue-worker-#{queue}"

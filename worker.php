@@ -37,7 +37,12 @@ class Simple_Worker
 
             $this->log("Got " . count($messages) . " messages");
             foreach ($messages as $message) {
-                $this->_callJob($message);
+                try {
+                    $this->_callJob($message);
+                } catch (Exception $e) {
+                    $this->log("Failed to run job: {$e->getMessage()}\n{$message->body}");
+                    $this->queue->deleteMessage($message);
+                }
             }
         }
     }

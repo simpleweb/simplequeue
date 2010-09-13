@@ -4,17 +4,6 @@
 # 
 # run with: god -c /path/to/simplequeue.god -D
 
-God::Contacts::Email.defaults do |d|
-  d.from_email = "god@#{`hostname`}.jail.cloudmanaged.com"
-  d.from_name = 'God Monitor'
-  d.delivery_method = :sendmail
-end
-
-God.contact(:email) do |c|
-  c.name = 'chrism'
-  c.to_email = 'chrism@simpleweb.co.uk'
-end
-
 %w{default webhooks}.each do |queue|
   # Create a new watch for each queue worker
   God.watch do |w|
@@ -28,7 +17,6 @@ end
     # determine the state on startup
     w.transition(:init, { true => :up, false => :start }) do |on|
       on.condition(:process_running) do |c|
-        c.notify = 'chrism'
         c.running = true
       end
     end
@@ -50,9 +38,6 @@ end
 
     # start if process is not running
     w.transition(:up, :start) do |on|
-      on.condition(:process_exits) do |c|
-        c.notify = 'chrism'
-      end
       on.condition(:process_running) do |c|
         c.running = false
       end

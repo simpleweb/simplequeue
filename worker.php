@@ -59,8 +59,8 @@ class Simple_Worker
 
     protected function _callJob($message)
     {
-		$msg = Zend_Json::decode($message->body);
-		
+		$msg = $message->body;
+
 		if(!array_key_exists('attempt', $msg)) {
 			$msg['attempt'] = 1;
 		} else {
@@ -101,13 +101,10 @@ class Simple_Worker
 		
 		if (array_key_exists('get', $msg)) {
 		    $client->setParameterGet($msg['get']);
-		}
-		 
-		if(array_key_exists('post', $msg) && !empty($msg['post'])) {
+		    $client->setMethod(Zend_Http_Client::GET);
+		} elseif (array_key_exists('post', $msg) && !empty($msg['post'])) {
 			$client->setParameterPost($msg['post']);
 		 	$client->setMethod(Zend_Http_Client::POST);
-		} else {
-			$client->setMethod(Zend_Http_Client::GET);
 		}
 
 		try
@@ -138,7 +135,7 @@ class Simple_Worker
 		
 			//Put back on to queue if we haven't hit max retries.
 			if($msg['attempt'] < $maxRetries) {
-				$this->queue->send(json_encode($msg), time() + 300);
+				$this->queue->send($msg, time() + 300);
 			}
 			
 		}
@@ -156,7 +153,9 @@ class Simple_Worker
 
         $this->log("Using config {$config}");
         $options = $this->_config->{$config}->toArray();
-
+        
+        $options['driverOptions']['unserializer'] = array('Zend_Json', 'decode');
+        
         $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     

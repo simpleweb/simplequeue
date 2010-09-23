@@ -59,8 +59,8 @@ class Simple_Worker
 
     protected function _callJob($message)
     {
-		$msg = Zend_Json::decode($message->body);
-		
+		$msg = $message->body;
+
 		if(!array_key_exists('attempt', $msg)) {
 			$msg['attempt'] = 1;
 		} else {
@@ -98,17 +98,17 @@ class Simple_Worker
 		foreach($msg['headers'] as $key => $value) {
 			$client->setHeaders($key, $value);
 		}
-		
-		if (array_key_exists('get', $msg)) {
-		    $client->setParameterGet($msg['get']);
-		}
-		 
-		if(array_key_exists('post', $msg) && !empty($msg['post'])) {
-			$client->setParameterPost($msg['post']);
-		 	$client->setMethod(Zend_Http_Client::POST);
-		} else {
-			$client->setMethod(Zend_Http_Client::GET);
-		}
+
+        if (array_key_exists('get', $msg)) {
+            $client->setParameterGet($msg['get']);
+        }
+
+        if(array_key_exists('post', $msg) && !empty($msg['post'])) {
+            $client->setParameterPost($msg['post']);
+            $client->setMethod(Zend_Http_Client::POST);
+        } else {
+            $client->setMethod(Zend_Http_Client::GET);
+        }
 
 		try
 		{
@@ -121,13 +121,12 @@ class Simple_Worker
 			$status = $e->getCode() . ' - ' . $e->getMessage();
 		}
 
-		echo $response;
+		echo $response->getBody() . "\n";
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
 			$this->queue->deleteMessage($message);
 		} else {
-			
 			$this->log("{$status} - Failed.");
 			$this->queue->deleteMessage($message);
 			
@@ -138,7 +137,7 @@ class Simple_Worker
 		
 			//Put back on to queue if we haven't hit max retries.
 			if($msg['attempt'] < $maxRetries) {
-				$this->queue->send(json_encode($msg), time() + 300);
+				$this->queue->send($msg, time() + 300);
 			}
 			
 		}
@@ -156,8 +155,10 @@ class Simple_Worker
 
         $this->log("Using config {$config}");
         $options = $this->_config->{$config}->toArray();
-
-        $this->queue = new SimpleWeb_Queue(new SimpleWeb_Queue_Adapter_Db($options), $options);
+        
+        $options['driverOptions']['unserializer'] = array('Zend_Json', 'decode');
+        
+        $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     
     protected function log()

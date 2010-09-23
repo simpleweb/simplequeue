@@ -7,7 +7,7 @@
 %w{default webhooks}.each do |queue|
   # Create a new watch for each queue worker
   God.watch do |w|
-    w.name = "simplequeue-worker-#{queue}"
+    w.name = "simplequeue-redis-worker-#{queue}"
     w.dir = File.dirname(__FILE__)
     w.interval = 30.seconds # default
     w.env = { 'SIMPLEQUEUE_CONFIG' => queue }

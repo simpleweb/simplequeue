@@ -60,8 +60,6 @@ class Simple_Worker
     protected function _callJob($message)
     {
 		$msg = $message->body;
-		
-        print_r($msg);
 
 		if(!array_key_exists('attempt', $msg)) {
 			$msg['attempt'] = 1;
@@ -123,13 +121,12 @@ class Simple_Worker
 			$status = $e->getCode() . ' - ' . $e->getMessage();
 		}
 
-		echo $response->getBody();
+		echo $response->getBody() . "\n";
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
 			$this->queue->deleteMessage($message);
 		} else {
-			
 			$this->log("{$status} - Failed.");
 			$this->queue->deleteMessage($message);
 			

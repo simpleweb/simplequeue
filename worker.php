@@ -60,6 +60,8 @@ class Simple_Worker
     protected function _callJob($message)
     {
 		$msg = $message->body;
+		
+        print_r($msg);
 
 		if(!array_key_exists('attempt', $msg)) {
 			$msg['attempt'] = 1;

@@ -100,14 +100,17 @@ class Simple_Worker
 		foreach($msg['headers'] as $key => $value) {
 			$client->setHeaders($key, $value);
 		}
-		
-		if (array_key_exists('get', $msg)) {
-		    $client->setParameterGet($msg['get']);
-		    $client->setMethod(Zend_Http_Client::GET);
-		} elseif (array_key_exists('post', $msg) && !empty($msg['post'])) {
-			$client->setParameterPost($msg['post']);
-		 	$client->setMethod(Zend_Http_Client::POST);
-		}
+
+        if (array_key_exists('get', $msg)) {
+            $client->setParameterGet($msg['get']);
+        }
+
+        if(array_key_exists('post', $msg) && !empty($msg['post'])) {
+            $client->setParameterPost($msg['post']);
+            $client->setMethod(Zend_Http_Client::POST);
+        } else {
+            $client->setMethod(Zend_Http_Client::GET);
+        }
 
 		try
 		{

@@ -71,7 +71,8 @@ class Simple_Worker
 
 		$client = new Zend_Http_Client($msg['url']);
         
-		$timeout = 30;
+		//TH - increased timeout, wasn't working for an export. We need to amend this to report on timed out actions.
+		$timeout = 900;
 		if(array_key_exists('timeout', $msg)) {
 			$timeout=$msg['timeout'];
 		}

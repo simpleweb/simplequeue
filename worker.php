@@ -166,8 +166,8 @@ class Simple_Worker
 
         $options['name'] = $options['successQueue'];
         $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
-        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
         $options['name'] = $options['failQueue'];
+        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     
     protected function log()

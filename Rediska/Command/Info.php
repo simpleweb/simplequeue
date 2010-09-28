@@ -3,35 +3,48 @@
 /**
  * Provide information and statistics about the server
  * 
- * @return array
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_Info extends Rediska_Command_Abstract
 {
-	protected $_connections = array();
+    protected $_connections = array();
 
-    protected function _create() 
+    /**
+     * Create
+     *
+     * @return array
+     */
+    public function create() 
     {
-    	$command = 'INFO';
+        $command = 'INFO';
         $info = array();
+        $commands = array();
         foreach($this->_rediska->getConnections() as $connection) {
-        	$this->_connections[] = $connection->getAlias();
-        	$this->_addCommandByConnection($connection, $command);
+            $this->_connections[] = $connection->getAlias();
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     * 
+     * @param array $responses
+     * @return array
+     */
+    public function parseResponses($responses)
     {
-    	$info = array();
-    	$count = 0;
-    	foreach($this->_connections as $connection) {
-    		$info[$connection] = array();
-    		
+        $info = array();
+        $count = 0;
+        foreach($this->_connections as $connection) {
+            $info[$connection] = array();
+            
             foreach (explode(Rediska::EOL, $responses[$count]) as $param) {
                 if (!$param) {
                     continue;
@@ -52,8 +65,8 @@ class Rediska_Command_Info extends Rediska_Command_Abstract
                 $info[$connection][$name] = $value;
             }
 
-    		$count++;
-    	}
+            $count++;
+        }
 
         if (count($info) == 1) {
             $info = array_values($info);

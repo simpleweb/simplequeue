@@ -3,32 +3,36 @@
 /**
  * Remove all the elements in the sorted set at key with a score between min and max (including elements with score equal to min or max).
  * 
- * @param string  $name  Key name
- * @param numeric $min   Min value
- * @param numeric $max   Max value
- * @return integer
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_DeleteFromSortedSetByScore extends Rediska_Command_Abstract
 {
+    /**
+     * Supported version
+     *
+     * @var string
+     */
     protected $_version = '1.1';
 
-    protected function _create($name, $min, $max)
+    /**
+     * Create command
+     *
+     * @param string  $key   Key name
+     * @param numeric $min   Min value
+     * @param numeric $max   Max value
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $min, $max)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $command = array('ZREMRANGEBYSCORE', "{$this->_rediska->getOption('namespace')}$name", $min, $max);
-
-        $this->_addCommandByConnection($connection, $command);
-    }
-
-    protected function _parseResponses($responses)
-    {
-        return $responses[0];
+        $command = array('ZREMRANGEBYSCORE', $this->_rediska->getOption('namespace') . $key, $min, $max);
+        
+        return new Rediska_Connection_Exec($connection, $command);
     }
 }

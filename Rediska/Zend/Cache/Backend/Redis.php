@@ -1,9 +1,7 @@
 <?php
 
-/**
- * @see Rediska
- */
-require_once 'Rediska.php';
+// Require Rediska
+require_once dirname(__FILE__) . '/../../../../Rediska.php';
 
 /**
  * @see Zend_Cache_Backend
@@ -20,9 +18,10 @@ require_once 'Zend/Cache/Backend/ExtendedInterface.php';
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage ZendFrameworkIntegration
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zend_Cache_Backend_ExtendedInterface
 {
@@ -32,43 +31,43 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
     const TAGS_UNSUPPORTED_BY_CLEAN_OF_REDIS_BACKEND = 'Rediska_Zend_Cache_Backend_Redis::clean() : tags are unsupported by the Redis backend';
     const TAGS_UNSUPPORTED_BY_SAVE_OF_REDIS_BACKEND =  'Rediska_Zend_Cache_Backend_Redis::save() : tags are unsupported by the Redis backend';
 
-	/**
+    /**
      * Rediska instance
      * 
      * @var Rediska
      */
-    protected $_rediska;
+    protected $_rediska = Rediska::DEFAULT_NAME;
 
     /**
      * Contruct Zend_Cache Redis backend
      * 
-     * @param array $options Options
-     * 
-     * servers        - Array of servers: array(
-     *                                        array('host' => '127.0.0.1', 'port' => 6379, 'weight' => 1, 'password' => '123'),
-     *                                        array('host' => '127.0.0.1', 'port' => 6380, 'weight' => 2)
-     *                                    )
-     * serializer     - Callback function for serialization.
-     *                  You may use PHP extensions like igbinary (http://opensource.dynamoid.com/)
-     *                  or you personal function.
-     *                  For default php function serialize.             
-     * unserializer   - Unserialize callback.
-     * keyDistributor - Algorithm of keys distribution on redis servers.
-     *                  For default 'consistentHashing' which implement
-     *                  consistent hashing algorithm (http://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html)
-     *                  You may use basic 'crc32' (crc32(key) % servers_count) algorithm
-     *                  or you personal implementation (option value - name of class
-     *                  which implements Rediska_KeyDistributor_Interface).
-     * 
+     * @param mixed $rediska Rediska instance name, Rediska object or array of options
      */
-    public function __construct(array $options = array())
+    public function __construct($options = array())
     {
-    	parent::__construct($options);
-
-    	if (isset($options['namespace'])) {
-            Zend_Cache::throwException('Namespace must definded in front end options (cache_id_prefix)');
+        if ($options instanceof Zend_Config) {
+            $options = $options->toArray();
         }
-        $this->_rediska = new Rediska($options);
+
+        if (isset($options['rediska'])) {
+            $this->setRediska($options['rediska']);
+        }
+    }
+
+    public function setRediska($rediska)
+    {
+        $this->_rediska = $rediska;
+        
+        return $this;
+    }
+
+    public function getRediska()
+    {
+        if (!is_object($this->_rediska)) {
+            $this->_rediska = Rediska_Options_RediskaInstance::getRediskaInstance($this->_rediska, 'Zend_Cache_Exception', 'backend');
+        }
+
+        return $this->_rediska;
     }
 
     /**
@@ -80,10 +79,19 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
      */
     public function load($id, $doNotTestCacheValidity = false)
     {
-        $tmp = $this->_rediska->get($id);
-        if (is_array($tmp)) {
+        $tmp = $this->getRediska()->get($id);
+
+        if (is_array($id)) {
+            foreach ($id as $k) {
+                if (isset($tmp[$k])) {
+                    $tmp[$k] = $tmp[$k][0];
+                }
+            }
+            return $tmp;
+        } else if (is_array($tmp)) {
             return $tmp[0];
         }
+
         return false;
     }
     
@@ -95,7 +103,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
      */
     public function test($id)
     {
-        $tmp = $this->_rediska->get($id);
+        $tmp = $this->getRediska()->get($id);
         if (is_array($tmp)) {
             return $tmp[1];
         }
@@ -117,11 +125,11 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
     public function save($data, $id, $tags = array(), $specificLifetime = false)
     {
         $lifetime = $this->getLifetime($specificLifetime);
-
-        $result = $this->_rediska->set($id, array($data, time(), $lifetime));
-
-        if ($result && $lifetime) {
-            $this->_rediska->expire($id, $lifetime);
+        
+        if ($lifetime) {
+            $result = $this->getRediska()->setAndExpire($id, array($data, time(), $lifetime), $lifetime);
+        } else {
+            $result = $this->getRediska()->set($id, array($data, time(), $lifetime));
         }
 
         if (count($tags) > 0) {
@@ -139,7 +147,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
      */
     public function remove($id)
     {
-        return $this->_rediska->delete($id);
+        return $this->getRediska()->delete($id);
     }
 
     /**
@@ -161,7 +169,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
     {
         switch ($mode) {
             case Zend_Cache::CLEANING_MODE_ALL:
-                return $this->_rediska->flushDb();
+                return $this->getRediska()->flushDb();
                 break;
             case Zend_Cache::CLEANING_MODE_OLD:
                 $this->_log("Rediska_Zend_Cache_Backend_Redis::clean() : CLEANING_MODE_OLD is unsupported by the Redis backend");
@@ -292,7 +300,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
      */
     public function getMetadatas($id)
     {
-        $tmp = $this->_rediska->get($id);
+        $tmp = $this->getRediska()->get($id);
         if (is_array($tmp)) {
             $data = $tmp[0];
             $mtime = $tmp[1];
@@ -320,7 +328,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
      */
     public function touch($id, $extraLifetime)
     {
-        $tmp = $this->_rediska->get($id);
+        $tmp = $this->getRediska()->get($id);
         if (is_array($tmp)) {
             $data = $tmp[0];
             $mtime = $tmp[1];
@@ -334,13 +342,7 @@ class Rediska_Zend_Cache_Backend_Redis extends Zend_Cache_Backend implements Zen
             if ($newLifetime <=0) {
                 return false;
             }
-            $result = $this->_rediska->set($id, array($data, time(), $newLifetime));
-
-            if ($result) {
-                $this->_rediska->expire($id, $newLifetime);    
-            }
-
-            return $result;
+            return $this->getRediska()->setAndExpire($id, array($data, time(), $newLifetime), $newLifetime);
         }
         return false;
     }

@@ -3,31 +3,41 @@
 /**
  * Atomic set value and return old 
  * 
- * @param string  $name   Key name
- * @param mixin   $value  Value
- * @return mixin
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_SetAndGet extends Rediska_Command_Abstract
 {
-    protected function _create($name, $value)
+    /**
+     * Create command
+     *
+     * @param string $key   Key name
+     * @param mixed  $value Value
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $value)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $value = $this->_rediska->serialize($value);
+        $value = $this->_rediska->getSerializer()->serialize($value);
 
-        $command = "GETSET {$this->_rediska->getOption('namespace')}$name " . strlen($value) . Rediska::EOL . $value;
+        $command = "GETSET {$this->_rediska->getOption('namespace')}$key " . strlen($value) . Rediska::EOL . $value;
 
-        $this->_addCommandByConnection($connection, $command);
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param string $response
+     * @return mixed
+     */
+    public function parseResponse($response)
     {
-        return $this->_rediska->unserialize($responses[0]);
+        return $this->_rediska->getSerializer()->unserialize($response);
     }
 }

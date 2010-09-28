@@ -1,34 +1,33 @@
 <?php
 
-/**
- * @see Rediska_Key_Abstract
- */
-require_once 'Rediska/Key/Abstract.php';
+// Require Rediska
+require_once dirname(__FILE__) . '/../../Rediska.php';
 
 /**
  * Rediska Sorted set key
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Key objects
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggregate, ArrayAccess, Countable
 {
     /**
      * Add the specified member to the Sorted set
      * 
-     * @param mixin $value Value
+     * @param mixed $value Value
      * @param numeric $score Score
      * @return boolean
      */
     public function add($value, $score)
     {
-        $result = $this->_getRediskaOn()->addToSortedSet($this->_name, $value, $score);
+        $result = $this->_getRediskaOn()->addToSortedSet($this->getName(), $value, $score);
 
-        if ($result && !is_null($this->_expire)) {
-            $this->expire($this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire()) && $result) {
+            $this->expire($this->getExpire(), $this->isExpireTimestamp());
         }
 
         return $result;
@@ -37,15 +36,15 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
     /**
      * Remove the specified member from the Sorted set
      * 
-     * @param mixin $value Value
+     * @param mixed $value Value
      * @return boolean
      */
     public function remove($value)
     {
-        $result = $this->_getRediskaOn()->deleteFromSortedSet($this->_name, $value);
+        $result = $this->_getRediskaOn()->deleteFromSortedSet($this->getName(), $value);
 
-        if ($result && !is_null($this->_expire)) {
-            $this->expire($this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire()) && $result) {
+            $this->expire($this->getExpire(), $this->isExpireTimestamp());
         }
 
         return $result;
@@ -58,7 +57,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function count()
     {
-        return $this->_getRediskaOn()->getSortedSetLength($this->_name);
+        return $this->_getRediskaOn()->getSortedSetLength($this->getName());
     }
 
     /**
@@ -73,7 +72,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function getByScore($min, $max, $withScores = false, $limit = null, $offset = null)
     {
-        return $this->_getRediskaOn()->getFromSortedSetByScore($this->_name, $min, $max, $withScores, $limit, $offset);
+        return $this->_getRediskaOn()->getFromSortedSetByScore($this->getName(), $min, $max, $withScores, $limit, $offset);
     }
     
     /**
@@ -85,18 +84,18 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function removeByScore($min, $max)
     {
-        return $this->_getRediskaOn()->DeleteFromSortedSetByScore($this->_name, $min, $max);
+        return $this->_getRediskaOn()->DeleteFromSortedSetByScore($this->getName(), $min, $max);
     }
 
     /**
      * Get member score from Sorted Set
      * 
-     * @param mixin $value
+     * @param mixed $value
      * @return numeric
      */
     public function getScore($value)
     {
-    	return $this->_getRediskaOn()->getScoreFromSortedSet($this->_name, $value);
+        return $this->_getRediskaOn()->getScoreFromSortedSet($this->getName(), $value);
     }
     
     /**
@@ -107,7 +106,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function incrementScore($value, $score)
     {
-        return $this->_getRediskaOn()->incrementScoreInSortedSet($this->_name, $value, $score);
+        return $this->_getRediskaOn()->incrementScoreInSortedSet($this->getName(), $value, $score);
     }
 
     /**
@@ -119,7 +118,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */ 
     public function removeByRank($start, $end)
     {
-        return $this->_getRediskaOn()->deleteFromSortedSetByRank($this->_name, $start, $end);
+        return $this->_getRediskaOn()->deleteFromSortedSetByRank($this->getName(), $start, $end);
     }
 
     /**
@@ -131,15 +130,15 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */ 
     public function getRank($value, $revert = false)
     {
-        return $this->_getRediskaOn()->getRankFromSortedSet($this->_name, $value, $revert);
+        return $this->_getRediskaOn()->getRankFromSortedSet($this->getName(), $value, $revert);
     }
     
     /**
      * Store to key union between the sorted sets
      * 
-     * @param string|array  $setOrSets    Sorted set key name or object, or array of its
-     * @param string        $storeKeyName Result sorted set key name
-     * @param string        $aggregation  Aggregation method: SUM (for default), MIN, MAX.
+     * @param string|Rediska_Key_SortedSet|array  $setOrSets    Sorted set key name or object, or array of its
+     * @param string                              $storeKeyName Result sorted set key name
+     * @param string                              $aggregation  Aggregation method: SUM (for default), MIN, MAX.
      * @return integer
      */
     public function union($setOrSets, $storeKeyName, $aggregation = 'sum')
@@ -152,9 +151,9 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
     /**
      * Store to key intersection between sorted sets
      * 
-     * @param string|array  $setOrSets    Sorted set key name or object, or array of its
-     * @param string        $storeKeyName Result sorted set key name
-     * @param string        $aggregation  Aggregation method: SUM (for default), MIN, MAX.
+     * @param string|Rediska_Key_SortedSet|array  $setOrSets    Sorted set key name or object, or array of its
+     * @param string                              $storeKeyName Result sorted set key name
+     * @param string                              $aggregation  Aggregation method: SUM (for default), MIN, MAX.
      * @return integer
      */
     public function intersect($setOrSets, $storeKeyName, $aggregation = 'sum')
@@ -176,7 +175,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function sort($options = array())
     {
-        return $this->_getRediskaOn()->sort($this->_name, $options);
+        return $this->_getRediskaOn()->sort($this->getName(), $options);
     }
 
     /**
@@ -190,7 +189,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
      */
     public function toArray($withScores = false, $start = 0, $end = -1, $revert = false)
     {
-        return $this->_getRediskaOn()->getSortedSet($this->_name, $withScores, $start, $end, $revert);
+        return $this->_getRediskaOn()->getSortedSet($this->getName(), $withScores, $start, $end, $revert);
     }
 
     /**
@@ -203,11 +202,11 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
         $pipeline = $this->_getRediskaOn()->pipeline();
 
         foreach($array as $score => $value) {
-            $pipeline->addToSortedSet($this->_name, $value, $score);
+            $pipeline->addToSortedSet($this->getName(), $value, $score);
         }
 
-        if (!is_null($this->_expire)) {
-            $pipeline->expire($this->_name, $this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire())) {
+            $pipeline->expire($this->getName(), $this->getExpire(), $this->isExpireTimestamp());
         }
 
         $pipeline->execute();
@@ -284,7 +283,7 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
             }
         } else {
             foreach($sets as &$set) {
-                if ($set instanceof Rediska_Key_Set) {
+                if ($set instanceof Rediska_Key_SortedSet) {
                     $set = $set->getName();
                 }
             }

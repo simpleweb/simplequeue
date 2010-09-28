@@ -3,39 +3,38 @@
 /**
  * Return all the members of the Set value at key
  * 
- * @param string $name Key name
- * @param string $sort Deprecated
- * @return array
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetSet extends Rediska_Command_Abstract
 {
-    protected function _create($name, $sort = null)
+    /**
+     * Create command
+     *
+     * @param string $key Key name
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        if (is_null($sort)) {
-            $command = "SMEMBERS {$this->_rediska->getOption('namespace')}$name";
-        } else {
-            throw new Rediska_Command_Exception("This attribute is depricated. You must use 'sort' command for it.");
-        }
-        
-        $this->_addCommandByConnection($connection, $command);
+        $command = "SMEMBERS {$this->_rediska->getOption('namespace')}$key";
+
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param array $response
+     * @return array
+     */
+    public function parseResponse($response)
     {
-        $values = $responses[0];
-
-        foreach($values as &$value) {
-            $value = $this->_rediska->unserialize($value);
-        }
-
-        return $values;
+        return array_map(array($this->_rediska->getSerializer(), 'unserialize'), $response);
     }
 }

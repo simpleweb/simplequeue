@@ -3,21 +3,25 @@
 /**
  * Get random element from the Set value at key
  * 
- * @param string  $name Key name
- * @param boolean $pop If true - pop value from the set
- * @return mixin
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetRandomFromSet extends Rediska_Command_Abstract
 {
-    protected function _create($name, $pop = false)
+    /**
+     * Create command
+     *
+     * @param string            $key  Key name
+     * @param boolean[optional] $pop  If true - pop value from the set. For default is false
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $pop = false)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
         if ($pop) {
             $command = "SPOP";
@@ -25,13 +29,19 @@ class Rediska_Command_GetRandomFromSet extends Rediska_Command_Abstract
             $command = "SRANDMEMBER";
         }
 
-        $command .= " {$this->_rediska->getOption('namespace')}$name";
+        $command .= " {$this->_rediska->getOption('namespace')}$key";
 
-        $this->_addCommandByConnection($connection, $command);
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param string $response
+     * @return mixed
+     */
+    public function parseResponse($response)
     {
-        return $this->_rediska->unserialize($responses[0]);
+        return $this->_rediska->getSerializer()->unserialize($response);
     }
 }

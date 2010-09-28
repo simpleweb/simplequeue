@@ -7,31 +7,43 @@
  *   h*llo will match hllo heeeello
  *   h[ae]llo will match hello and hallo, but not hillo
  * 
- * @throws Rediska_Command_Exception
- * @param string $pattern
- * @return array
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetKeysByPattern extends Rediska_Command_Abstract
 {
-    protected function _create($pattern) 
+    /**
+     * Create command
+     *
+     * @param string $pattern Pattern
+     * @return Rediska_Connection_Exec
+     */
+    public function create($pattern) 
     {
         if ($pattern == '') {
             throw new Rediska_Command_Exception("Pattern can't be empty");
         }
 
+        $commands = array();
         $command = "KEYS {$this->_rediska->getOption('namespace')}$pattern";
         foreach($this->_rediska->getConnections() as $connection) {
-            $this->_addCommandByConnection($connection, $command);
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return array
+     */
+    public function parseResponses($responses)
     {
         $keys = array();
         foreach($responses as $response) {
@@ -40,9 +52,12 @@ class Rediska_Command_GetKeysByPattern extends Rediska_Command_Abstract
             }
         }
 
+        $namespaceLength = strlen($this->_rediska->getOption('namespace'));
         $keys = array_unique($keys);
         foreach($keys as &$key) {
-            $key = substr($key, strlen($this->_rediska->getOption('namespace')));
+            if (strpos($key, $this->_rediska->getOption('namespace')) === 0) {
+                $key = substr($key, $namespaceLength);
+            }
         }
 
         return $keys;

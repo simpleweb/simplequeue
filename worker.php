@@ -9,10 +9,16 @@
 */
 class Simple_Worker
 {
+    const VERSION = '0.0.1';
+
     protected $_config;
+    protected $_successQueue;
+    protected $_failQueue;
 
     public function __construct($config)
     {
+        $this->log("SimpleWorker v".self::VERSION);
+
         if (is_array($config)) {
             $this->_config = new Zend_Config($config);
         } elseif (is_string('config') && strripos($config, '.ini') == (strlen($config) - 4)) {
@@ -42,6 +48,7 @@ class Simple_Worker
                 } catch (Exception $e) {
                     $this->log("Failed to run job: {$e->getMessage()}\n{$message->body}");
                     $this->queue->deleteMessage($message);
+                    $this->_failQueue->send($message->body);
                 }
             }
         }
@@ -61,50 +68,52 @@ class Simple_Worker
     {
 		$msg = $message->body;
 
-		if(!array_key_exists('attempt', $msg)) {
-			$msg['attempt'] = 1;
+		if(!isset($msg->attempt)) {
+			$msg->attempt = 1;
 		} else {
-			$msg['attempt'] += 1;
+			$msg->attempt += 1;
 		}
 		
-        $this->log("Attempting to retrieve {$msg['url']}");
+        $this->log("Attempting to retrieve {$msg->url}");
 
-		$client = new Zend_Http_Client($msg['url']);
+		$client = new Zend_Http_Client($msg->url);
         
 		$timeout = 30;
-		if(array_key_exists('timeout', $msg)) {
-			$timeout=$msg['timeout'];
+		if(isset($msg->timeout)) {
+			$timeout = $msg->timeout;
 		}
 		
 		$client->setConfig(array('timeout' => $timeout, 'maxredirects' => 5));
 		
 		//Deal with headers
-		if(!array_key_exists('headers', $msg)) {
-			$msg['headers'] = array();
-		}
+		if(!isset($msg->headers)) {
+			$msg->headers = array();
+		} else {
+            $msg->headers = (array) $msg->headers;
+        }
 		
-    	if(!array_key_exists('User-Agent', $msg['headers'])) {
-			$msg['headers']['User-Agent'] = 'Simplequeue';
+    	if(!isset($msg->headers["User-Agent"])) {
+			$msg->headers["User-Agent"] = 'Simplequeue';
 		}
         	
-		if(!array_key_exists('Cache-Control', $msg['headers'])) {
-			$msg['headers']['Cache-Control'] = 'no-cache';
+		if(!isset($msg->headers['Cache-Control'])) {
+			$msg->headers['Cache-Control'] = 'no-cache';
 		}
 				
-    	if(!array_key_exists('Connection', $msg['headers'])) {
-			$msg['headers']['Connection'] = 'Keep-Alive';
-		}
+    	if(!isset($msg->headers['Connection'])) {
+			$msg->headers['Connection'] = 'Keep-Alive';
+        }
 		
-		foreach($msg['headers'] as $key => $value) {
+		foreach($msg->headers as $key => $value) {
 			$client->setHeaders($key, $value);
 		}
 
-        if (array_key_exists('get', $msg)) {
-            $client->setParameterGet($msg['get']);
+        if (isset($msg->get)) {
+            $client->setParameterGet((array) $msg->get);
         }
 
-        if(array_key_exists('post', $msg) && !empty($msg['post'])) {
-            $client->setParameterPost($msg['post']);
+        if(isset($msg->post) && !empty($msg->post)) {
+            $client->setParameterPost((array) $msg->post);
             $client->setMethod(Zend_Http_Client::POST);
         } else {
             $client->setMethod(Zend_Http_Client::GET);
@@ -125,20 +134,25 @@ class Simple_Worker
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
+			$msg->suceededAt = date('r');
+			$msg->queue = $this->queue->getName();
+            $this->_successQueue->send($msg);
 			$this->queue->deleteMessage($message);
 		} else {
 			$this->log("{$status} - Failed.");
 			$this->queue->deleteMessage($message);
 			
 			$maxRetries = 5;
-			if(array_key_exists('maxretries',$msg)) {
-				$maxRetries = $msg['maxretries'];
+			if(isset($msg->maxretries)) {
+				$maxRetries = $msg->maxretries;
 			}
 		
 			//Put back on to queue if we haven't hit max retries.
-			if($msg['attempt'] < $maxRetries) {
+			if($msg->attempt < $maxRetries) {
 				$this->queue->send($msg, time() + 300);
-			}
+			} else {
+                $this->_failQueue->send($msg);
+            }
 			
 		}
 			
@@ -156,9 +170,12 @@ class Simple_Worker
         $this->log("Using config {$config}");
         $options = $this->_config->{$config}->toArray();
         
-        $options['driverOptions']['unserializer'] = array('Zend_Json', 'decode');
-        
         $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+
+        $options['name'] = $options['successQueue'];
+        $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+        $options['name'] = $options['failQueue'];
+        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     
     protected function log()

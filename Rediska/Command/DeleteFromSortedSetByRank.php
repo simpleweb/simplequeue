@@ -3,32 +3,36 @@
 /**
  * Remove all elements in the sorted set at key with rank between start  and end
  * 
- * @param string  $name  Key name
- * @param numeric $start Start position
- * @param numeric $end   End position
- * @return integer
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_DeleteFromSortedSetByRank extends Rediska_Command_Abstract
 {
+    /**
+     * Supported version
+     *
+     * @var string
+     */
     protected $_version = '1.3.4';
 
-    protected function _create($name, $start, $end)
+    /**
+     * Create command
+     *
+     * @param string  $key   Key name
+     * @param numeric $start Start position
+     * @param numeric $end   End position
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $start, $end)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $command = array('ZREMRANGEBYRANK', "{$this->_rediska->getOption('namespace')}$name", $start, $end);
+        $command = array('ZREMRANGEBYRANK', $this->_rediska->getOption('namespace') . $key, $start, $end);
 
-        $this->_addCommandByConnection($connection, $command);
-    }
-
-    protected function _parseResponses($responses)
-    {
-        return $responses[0];
+        return new Rediska_Connection_Exec($connection, $command);
     }
 }

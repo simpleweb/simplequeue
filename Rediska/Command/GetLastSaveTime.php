@@ -2,39 +2,51 @@
 
 /**
  * Return the UNIX time stamp of the last successfully saving of the dataset on disk
- *
- * @return array|integer
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetLastSaveTime extends Rediska_Command_Abstract
 {
-	protected $_connections = array();
-	
-    protected function _create() 
+    protected $_connections = array();
+
+    /**
+     * Create command
+     *
+     * @return Rediska_Connection_Exec
+     */
+    public function create() 
     {
-    	$command = "LASTSAVE";
-    	
+        $command = "LASTSAVE";
+        $commands = array();
         foreach($this->_rediska->getConnections() as $connection) {
-        	$this->_connections[] = $connection->getAlias();
-            $this->_addCommandByConnection($connection, $command);
+            $this->_connections[] = $connection->getAlias();
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param array $responses
+     * @return integer|array
+     */
+    public function parseResponses($responses)
     {
-    	$timestamps = array();
-    	$count = 0;
-    	foreach($this->_connections as $connection) {
-    		$timestamps[$connection] = $responses[$count];
-    		$count++;
-    	}
+        $timestamps = array();
+        $count = 0;
+        foreach($this->_connections as $connection) {
+            $timestamps[$connection] = $responses[$count];
+            $count++;
+        }
 
-    	if (count($timestamps) == 1) {
+        if (count($timestamps) == 1) {
             $timestamps = array_values($timestamps);
             $timestamps = $timestamps[0];
         }

@@ -10,6 +10,8 @@
 class Simple_Worker
 {
     protected $_config;
+    protected $_successQueue;
+    protected $_failQueue;
 
     public function __construct($config)
     {
@@ -42,6 +44,7 @@ class Simple_Worker
                 } catch (Exception $e) {
                     $this->log("Failed to run job: {$e->getMessage()}\n{$message->body}");
                     $this->queue->deleteMessage($message);
+                    $this->_failQueue->send($message->body);
                 }
             }
         }
@@ -125,6 +128,9 @@ class Simple_Worker
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
+			$msg->suceededAt = date('r');
+			$msg->queue = $this->queue->getName();
+            $this->_successQueue->send($msg);
 			$this->queue->deleteMessage($message);
 		} else {
 			$this->log("{$status} - Failed.");
@@ -138,7 +144,9 @@ class Simple_Worker
 			//Put back on to queue if we haven't hit max retries.
 			if($msg->attempt < $maxRetries) {
 				$this->queue->send($msg, time() + 300);
-			}
+			} else {
+                $this->_failQueue->send($msg);
+            }
 			
 		}
 			
@@ -157,6 +165,11 @@ class Simple_Worker
         $options = $this->_config->{$config}->toArray();
         
         $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+
+        $options['name'] = $options['successQueue'];
+        $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+        $options['name'] = $options['failQueue'];
+        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
     
     protected function log()

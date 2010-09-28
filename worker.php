@@ -128,6 +128,8 @@ class Simple_Worker
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
+			$msg->suceededAt = time();
+			$msg->queue = $this->queue->getName();
             $this->_successQueue->send($msg);
 			$this->queue->deleteMessage($message);
 		} else {

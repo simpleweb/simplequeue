@@ -130,8 +130,6 @@ class Simple_Worker
 			$status = $e->getCode() . ' - ' . $e->getMessage();
 		}
 
-		echo $response->getBody() . "\n";
-
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
 			$msg->suceededAt = date('r');

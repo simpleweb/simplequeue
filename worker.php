@@ -9,12 +9,16 @@
 */
 class Simple_Worker
 {
+    const VERSION = '0.0.1';
+
     protected $_config;
     protected $_successQueue;
     protected $_failQueue;
 
     public function __construct($config)
     {
+        $this->log("SimpleWorker v".self::VERSION);
+
         if (is_array($config)) {
             $this->_config = new Zend_Config($config);
         } elseif (is_string('config') && strripos($config, '.ini') == (strlen($config) - 4)) {

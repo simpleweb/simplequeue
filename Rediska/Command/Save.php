@@ -1,33 +1,47 @@
 <?php
 
 /**
- * Synchronously save the DB on disk
- * 
- * @param boolean $background Save asynchronously
- * @return boolean
+ * Save the DB on disk
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_Save extends Rediska_Command_Abstract
 {
-    protected function _create($background = false) 
+    /**
+     * Create command
+     *
+     * @param boolean[optional] $background Save asynchronously. For default is false
+     * @return Rediska_Connection_Exec
+     */
+    public function create($background = false) 
     {
+        $command = '';
         if ($background) {
             $command = "BGSAVE";
         } else {
             $command = "SAVE";
         }
 
+        $commands = array();
         foreach($this->_rediska->getConnections() as $connection) {
-            $this->_addCommandByConnection($connection, $command);
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return boolean
+     */
+    public function parseResponses($responses)
     {
         return true;
     }

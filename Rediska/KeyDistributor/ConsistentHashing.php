@@ -1,27 +1,13 @@
 <?php
 
 /**
- * @see Rediska_Connection
- */
-require_once 'Rediska/Connection.php';
-
-/**
- * @see Rediska_KeyDistributor_Interface
- */
-require_once 'Rediska/KeyDistributor/Interface.php';
-
-/**
- * @see Rediska_KeyDistributor_Exception
- */
-require_once 'Rediska/KeyDistributor/Exception.php';
-
-/**
- * @package Rediska
  * @author Kijin Sung <kijinbear@gmail.com>
+ * @package Rediska
+ * @subpackage Key distributor
  * @link http://github.com/kijin/distrib
  * @version 0.1.1
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_KeyDistributor_ConsistentHashing implements Rediska_KeyDistributor_Interface
 {

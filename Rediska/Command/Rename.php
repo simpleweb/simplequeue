@@ -3,50 +3,60 @@
 /**
  * Rename the old key in the new one
  * 
- * @throws Rediska_Command_Exception
- * @param string $oldName Old key name
- * @param string $newName New key name
- * @param boolean $overwrite Overwrite the new name key if it already exists 
- * @return boolean
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_Rename extends Rediska_Command_Abstract
 {
-    protected function _create($oldName, $newName, $overwrite = true) 
+    /**
+     * Create command
+     *
+     * @param string            $oldKey    Old key name
+     * @param string            $newKey    New key name
+     * @param boolean[optional] $overwrite Overwrite the new name key if it already exists. For default is false.
+     * @return Rediska_Connection_Exec
+     */
+    public function create($oldKey, $newKey, $overwrite = true)
     {
-        $oldNameConnection = $this->_rediska->getConnectionByKeyName($oldName);
-        $newNameConnection = $this->_rediska->getConnectionByKeyName($newName);
+        $oldKeyConnection = $this->_rediska->getConnectionByKeyName($oldKey);
+        $newKeyConnection = $this->_rediska->getConnectionByKeyName($newKey);
 
-        if ($oldNameConnection->getAlias() == $newNameConnection->getAlias()) {         
+        $command = '';
+        if ($oldKeyConnection === $newKeyConnection) {
             if ($overwrite) {
                 $command = "RENAME";
             } else {
                 $command = "RENAMENX";
             }
-            $command .= " {$this->_rediska->getOption('namespace')}$oldName {$this->_rediska->getOption('namespace')}$newName";
+            $command .= " {$this->_rediska->getOption('namespace')}$oldKey {$this->_rediska->getOption('namespace')}$newKey";
         } else {
-        	$this->setAtomic(false);
+            $this->setAtomic(false);
 
-            $command = "GET {$this->_rediska->getOption('namespace')}$oldName";
+            $command = "GET {$this->_rediska->getOption('namespace')}$oldKey";
         }
-
-        $this->_addCommandByConnection($oldNameConnection, $command);
+        
+        return new Rediska_Connection_Exec($oldKeyConnection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return boolean
+     */
+    public function parseResponses($responses)
     {
         if (!$this->isAtomic()) {
-            $oldValue = $this->_rediska->unserialize($responses[0]);
+            $oldValue = $this->_rediska->getSerializer()->unserialize($responses[0]);
             if (!is_null($oldValue)) {
-                $reply = $this->_rediska->set($this->newName, $oldValue, $this->overwrite);
+                $reply = $this->_rediska->set($this->newKey, $oldValue, $this->overwrite);
 
                 if ($reply) {
-                    $this->_rediska->delete($this->oldName);
+                    $this->_rediska->delete($this->oldKey);
                 }
 
                 return $reply;

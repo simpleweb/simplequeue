@@ -1,33 +1,32 @@
 <?php
 
-/**
- * @see Rediska_Key_Abstract
- */
-require_once 'Rediska/Key/Abstract.php';
+// Require Rediska
+require_once dirname(__FILE__) . '/../../Rediska.php';
 
 /**
  * Rediska Set key
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Key objects
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate, ArrayAccess, Countable
 {
     /**
      * Add the specified member to the Set
      * 
-     * @param mixin $value Value
+     * @param mixed $value Value
      * @return boolean
      */
     public function add($value)
     {
-        $result = $this->_getRediskaOn()->addToSet($this->_name, $value);
+        $result = $this->_getRediskaOn()->addToSet($this->getName(), $value);
 
-        if ($result && !is_null($this->_expire)) {
-            $this->expire($this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire()) && $result) {
+            $this->expire($this->getExpire(), $this->isExpireTimestamp());
         }
 
         return $result;
@@ -36,15 +35,15 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
     /**
      * Remove the specified member from the Set
      * 
-     * @param mixin $value Value
+     * @param mixed $value Value
      * @return boolean
      */
     public function remove($value)
     {
-        $result = $this->_getRediskaOn()->deleteFromSet($this->_name, $value);
+        $result = $this->_getRediskaOn()->deleteFromSet($this->getName(), $value);
 
-        if ($result && !is_null($this->_expire)) {
-        	$this->expire($this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire()) && $result) {
+            $this->expire($this->getExpire(), $this->isExpireTimestamp());
         }
 
         return $result;
@@ -54,16 +53,16 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
      * Move the specified member from one Set to another atomically
      * 
      * @param string|Rediska_Key_Set $set   Set key name or object
-     * @param mixin                  $value Value
+     * @param mixed                  $value Value
      * @return boolean
      */
     public function move($set, $value)
     {
-    	if ($set instanceof Rediska_Key_Set) {
-    		$set = $set->getName();
-    	}
+        if ($set instanceof Rediska_Key_Set) {
+            $set = $set->getName();
+        }
 
-    	return $this->_getRediskaOn()->moveToSet($this->_name, $set, $value);
+        return $this->_getRediskaOn()->moveToSet($this->getName(), $set, $value);
     }
     
     /**
@@ -73,39 +72,39 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
      */
     public function count()
     {
-        return $this->_getRediskaOn()->getSetLength($this->_name);
+        return $this->_getRediskaOn()->getSetLength($this->getName());
     }
     
     /**
      * Test if the specified value is a member of the Set
      * 
-     * @prarm mixin  $value Value
+     * @param mixed  $value Value
      * @return boolean
      */
     public function exists($value)
     {
-        return $this->_getRediskaOn()->existsInSet($this->_name, $value);
+        return $this->_getRediskaOn()->existsInSet($this->getName(), $value);
     }
-    
+
     /**
      * Return the intersection between the Sets
      * 
-     * @param string|array $setOrSets    Set key name or object, or array of its
-     * @param string|null  $storeKeyName Store intersection to set with key name
+     * @param string|Rediska_Key_Set|array $setOrSets    Set key name or object, or array of its
+     * @param string|null                  $storeKeyName Store intersection to set with key name
      * @return array|boolean
      */
     public function intersect($setOrSets, $storeKeyName = null)
     {
-    	$sets = $this->_prepareSetsForCompare($setOrSets);
-    	
-    	return $this->_getRediskaOn()->intersectSets($sets, $storeKeyName);
+        $sets = $this->_prepareSetsForCompare($setOrSets);
+
+        return $this->_getRediskaOn()->intersectSets($sets, $storeKeyName);
     }
     
     /**
      * Return the union between the Sets
      * 
-     * @param string|array $setOrSets    Set key name or object, or array of its
-     * @param string|null  $storeKeyName Store union to set with key name
+     * @param string|Rediska_Key_Set|array $setOrSets    Set key name or object, or array of its
+     * @param string|null                  $storeKeyName Store union to set with key name
      * @return array|boolean
      */
     public function union($setOrSets, $storeKeyName = null)
@@ -141,7 +140,7 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
      */
     public function sort($options = array())
     {
-        return $this->_getRediskaOn()->sort($this->_name, $options);
+        return $this->_getRediskaOn()->sort($this->getName(), $options);
     }
 
     /**
@@ -152,7 +151,7 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
      */
     public function toArray($sort = null)
     {
-        return $this->_getRediskaOn()->getSet($this->_name, $sort);
+        return $this->_getRediskaOn()->getSet($this->getName(), $sort);
     }
     
     /**
@@ -165,11 +164,11 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
         // TODO: Use pipelines
         $pipeline = $this->_getRediskaOn()->pipeline();
         foreach($array as $item) {
-            $pipeline->addToSet($this->_name, $item);
+            $pipeline->addToSet($this->getName(), $item);
         }
 
-        if (!is_null($this->_expire)) {
-        	$pipeline->expire($this->_name, $this->_expire, $this->_isExpireTimestamp);
+        if (!is_null($this->getExpire())) {
+            $pipeline->expire($this->getName(), $this->getExpire(), $this->isExpireTimestamp());
         }
 
         $pipeline->execute();
@@ -226,8 +225,8 @@ class Rediska_Key_Set extends Rediska_Key_Abstract implements IteratorAggregate,
             }
         }
 
-        if (!in_array($this->_name, $sets)) {
-            array_unshift($sets, $this->_name);
+        if (!in_array($this->getName(), $sets)) {
+            array_unshift($sets, $this->getName());
         }
 
         return $sets;

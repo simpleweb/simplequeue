@@ -3,31 +3,41 @@
 /**
  * Test if the specified value is a member of the Set at key
  * 
- * @param string $name  Key value
- * @prarm mixin  $value Value
- * @return boolean
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_ExistsInSet extends Rediska_Command_Abstract
 {
-    protected function _create($name, $value)
+    /**
+     * Create command
+     *
+     * @param string $key    Key value
+     * @param mixed  $member Member
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $member)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
-        
-        $value = $this->_rediska->serialize($value);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $command = "SISMEMBER {$this->_rediska->getOption('namespace')}$name " . strlen($value) . Rediska::EOL . $value;
+        $member = $this->_rediska->getSerializer()->serialize($member);
 
-        $this->_addCommandByConnection($connection, $command);
+        $command = "SISMEMBER {$this->_rediska->getOption('namespace')}$key " . strlen($member) . Rediska::EOL . $member;
+
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     * 
+     * @param integer $response
+     * @return boolean
+     */
+    public function parseResponse($response)
     {
-        return (boolean)$responses[0];
+        return (boolean)$response;
     }
 }

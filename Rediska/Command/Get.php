@@ -3,69 +3,80 @@
 /**
  * Get value of key or array of values by array of keys
  * 
- * @param string|array $nameOrNames Key name or array of names
- * @return mixed
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_Get extends Rediska_Command_Abstract
 { 
-    protected $_multi = false;
     protected $_keys = array();
     protected $_keysByConnections = array();
 
-    protected function _create($nameOrNames)
+    /**
+     * Create command
+     *
+     * @param string|array $keyOrKeys Key name or array of names
+     * @return Rediska_Connection_Exec
+     */
+    public function create($keyOrKeys)
     {
-        if (is_array($nameOrNames)) {
+        if (is_array($keyOrKeys)) {
             $this->_multi = true;
-            $names = $nameOrNames;
+            $keys = $keyOrKeys;
 
-            if (empty($names)) {
-            	throw new Rediska_Command_Exception('Not present keys for get');
+            if (empty($keys)) {
+                throw new Rediska_Command_Exception('Not present keys for get');
             }
 
             $sortedResult = array();
-            $this->_keys = $names;
+            $this->_keys = $keys;
             $connections = array();
             $keysByConnections = array();
-            foreach ($names as $name) {
-                $connection = $this->_rediska->getConnectionByKeyName($name);
+            foreach ($keys as $key) {
+                $connection = $this->_rediska->getConnectionByKeyName($key);
                 $connectionAlias = $connection->getAlias();
                 if (!array_key_exists($connectionAlias, $connections)) {
                     $connections[$connectionAlias] = $connection;
                     $keysByConnections[$connectionAlias] = array();
                 }
-                $keysByConnections[$connectionAlias][] = $name;
+                $keysByConnections[$connectionAlias][] = $key;
             }
 
             $result = array();
+            $commands = array();
             foreach($keysByConnections as $connectionAlias => $keys) {
                 $command = "MGET ";
                 foreach($keys as $key) {
                     $command .= " {$this->_rediska->getOption('namespace')}$key";
                     $this->_keysByConnections[] = $key;
                 }
-
-                $this->_addCommandByConnection($connections[$connectionAlias], $command);
+                $commands[] = new Rediska_Connection_Exec($connections[$connectionAlias], $command);
             }
+
+            return $commands;
         } else {
-            $name = $nameOrNames;
+            $key = $keyOrKeys;
 
-            $connection = $this->_rediska->getConnectionByKeyName($name);
+            $connection = $this->_rediska->getConnectionByKeyName($key);
 
-            $command = "GET {$this->_rediska->getOption('namespace')}$name";
-            
-            $this->_addCommandByConnection($connection, $command);
+            $command = "GET {$this->_rediska->getOption('namespace')}$key";
+
+            return new Rediska_Connection_Exec($connection, $command);
         }
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return mixed
+     */
+    public function parseResponses($responses)
     {
-        if ($this->_multi) {
+        if (is_array($this->keyOrKeys)) {
             $result = array();
             if (!empty($responses)) {
                 $mergedResponses = array();
@@ -78,14 +89,14 @@ class Rediska_Command_Get extends Rediska_Command_Abstract
                 }
                 foreach($this->_keys as $key) {
                     if (isset($unsortedResult[$key])) {
-                        $result[$key] = $this->_rediska->unserialize($unsortedResult[$key]);
+                        $result[$key] = $this->_rediska->getSerializer()->unserialize($unsortedResult[$key]);
                     }
                 }
             }
 
             return $result;
         } else {
-            return $this->_rediska->unserialize($responses[0]);
+            return $this->_rediska->getSerializer()->unserialize($responses[0]);
         }
     }
 }

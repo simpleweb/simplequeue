@@ -3,30 +3,39 @@
 /**
  * Get the number of keys
  * 
- * @return integer
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetKeysCount extends Rediska_Command_Abstract
 {
-    protected function _create()
+    /**
+     * Create command
+     *
+     * @return Rediska_Connection_Exec
+     */
+    public function create()
     {
+        $commands = array();
         $command = 'DBSIZE';
         foreach($this->_rediska->getConnections() as $connection) {
-            $this->_addCommandByConnection($connection, $command);
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param array $responses
+     * @return integer
+     */
+    public function parseResponses($responses)
     {
-        $count = 0;
-        foreach($responses as $response) {
-            $count += $response;
-        }
-        return $count;
+        return array_sum($responses);
     }
 }

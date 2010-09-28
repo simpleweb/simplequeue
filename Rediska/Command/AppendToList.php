@@ -3,31 +3,30 @@
 /**
  * Append value to the end of List
  * 
- * @param string $name  Key name
- * @param mixin  $value Value
- * @return boolean
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_AppendToList extends Rediska_Command_Abstract
 {
-    protected function _create($name, $value)
+    /**
+     * Create command
+     *
+     * @param string $key     Key name
+     * @param mixed  $value   Element value
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $value)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $value = $this->_rediska->serialize($value);
+        $value = $this->_rediska->getSerializer()->serialize($value);
 
-        $command = "RPUSH {$this->_rediska->getOption('namespace')}$name " . strlen($value) . Rediska::EOL . $value;
+        $command = "RPUSH {$this->_rediska->getOption('namespace')}$key " . strlen($value) . Rediska::EOL . $value;
 
-        $this->_addCommandByConnection($connection, $command);
-    }
-
-    protected function _parseResponses($responses)
-    {
-        return (boolean)$responses[0];
+        return new Rediska_Connection_Exec($connection, $command);
     }
 }

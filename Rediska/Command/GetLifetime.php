@@ -3,34 +3,41 @@
 /**
  * Get key lifetime
  * 
- * @param string $name
- * @return integer
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetLifetime extends Rediska_Command_Abstract
 {
-    protected function _create($name)
+    /**
+     * Create command
+     *
+     * @param string $key Key name
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
+        $command = "TTL {$this->_rediska->getOption('namespace')}$key";
 
-        $command = "TTL {$this->_rediska->getOption('namespace')}$name";
-
-        $this->_addCommandByConnection($connection, $command);
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param string $response
+     * @return string|null
+     */
+    public function parseResponse($response)
     {
-        $reply = $responses[0];
-
-        if ($reply == -1) {
-            $reply = null;
+        if ($response == -1) {
+            $response = null;
         }
 
-        return $reply;
+        return $response;
     }
 }

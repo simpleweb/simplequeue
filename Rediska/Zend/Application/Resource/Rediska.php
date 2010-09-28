@@ -1,9 +1,7 @@
 <?php
 
-/**
- * @see Rediska
- */
-require_once 'Rediska.php';
+// Require Rediska
+require_once dirname(__FILE__) . '/../../../../Rediska.php';
 
 /**
  * @see Zend_Application_Resource_ResourceAbstract
@@ -16,9 +14,10 @@ require_once 'Zend/Application/Resource/ResourceAbstract.php';
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage ZendFrameworkIntegration
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Zend_Application_Resource_Rediska extends Zend_Application_Resource_ResourceAbstract
 {
@@ -28,17 +27,25 @@ class Rediska_Zend_Application_Resource_Rediska extends Zend_Application_Resourc
     {
         $options = $this->getOptions();
 
-        if (isset($options['registry_key'])) {
-        	$key = $options['registry_key'];
-        	unset($options['registry_key']);
-        } else {
-        	$key = self::DEFAULT_REGISTRY_KEY;
+        if (isset($options['instances'])) {
+            foreach($options['instances'] as $name => $instanceOptions) {
+                if ($name == Rediska::DEFAULT_NAME) {
+                    $options = $instanceOptions;
+                } else {
+                    $instanceOptions['name'] = $name;
+                    Rediska_Manager::add($instanceOptions);
+                }
+            }
+            unset($options['instances']);
         }
 
-        $rediska = new Rediska($options);
+        if (!empty($options)) {
+            $options['name'] = Rediska::DEFAULT_NAME;   
+            $rediska = new Rediska($options);
 
-        Zend_Registry::set($key, $rediska);
+            Zend_Registry::set(self::DEFAULT_REGISTRY_KEY, $rediska);
 
-        return $rediska;
+            return $rediska;
+        }
     }
 }

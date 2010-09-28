@@ -5,14 +5,17 @@
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 interface Rediska_Command_Interface
 {
-    public function __construct(Rediska $rediska, $name, $arguments);
+    public function __construct(Rediska $rediska, $name, $arguments = array());
     public function write();
     public function read();
+    public function execute();
     public function isAtomic();
+    public function isQueued();
 }

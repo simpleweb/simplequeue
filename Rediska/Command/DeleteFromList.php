@@ -1,39 +1,37 @@
 <?php
 
 /**
- * Delete element from list by value at key
- * 
- * @throws Rediska_Command_Exception
- * @param $name Key name
- * @param $value Element value
- * @param $count Limit of deleted items
- * @return integer
+ * Delete element from list by member at key
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_DeleteFromList extends Rediska_Command_Abstract
 {
-    protected function _create($name, $value, $count = 0)
+    /**
+     * Create command
+     *
+     * @param $key             Key name
+     * @param $value           Element value
+     * @param $count[optional] Limit of deleted items. For default no limit.
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $value, $count = 0)
     {        
         if (!is_integer($count)) {
             throw new Rediska_Command_Exception("Count must be integer");
         }
 
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $value = $this->_rediska->serialize($value);
+        $value = $this->_rediska->getSerializer()->serialize($value);
 
-        $command = "LREM {$this->_rediska->getOption('namespace')}$name $count " . strlen($value) . Rediska::EOL . $value;
-
-        $this->_addCommandByConnection($connection, $command);
-    }
-
-    protected function _parseResponses($responses)
-    {
-        return $responses[0];
+        $command = "LREM {$this->_rediska->getOption('namespace')}$key $count " . strlen($value) . Rediska::EOL . $value;
+        
+        return new Rediska_Connection_Exec($connection, $command);
     }
 }

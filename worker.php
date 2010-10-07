@@ -46,7 +46,7 @@ class Simple_Worker
                 try {
                     $this->_callJob($message);
                 } catch (Exception $e) {
-                    $this->log("Failed to run job: {$e->getMessage()}\n{$message->body}");
+                    $this->log("Failed to run job: {$e->getMessage()}");
                     $this->queue->deleteMessage($message);
                     $this->_failQueue->send($message->body);
                 }

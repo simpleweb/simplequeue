@@ -9,7 +9,7 @@
 */
 class Simple_Worker
 {
-    const VERSION = '0.0.1';
+    const VERSION = '0.0.2';
 
     protected $_config;
     protected $_successQueue;
@@ -46,7 +46,7 @@ class Simple_Worker
                 try {
                     $this->_callJob($message);
                 } catch (Exception $e) {
-                    $this->log("Failed to run job: {$e->getMessage()}\n{$message->body}");
+                    $this->log("Failed to run job: {$e->getMessage()}");
                     $this->queue->deleteMessage($message);
                     $this->_failQueue->send($message->body);
                 }
@@ -129,8 +129,6 @@ class Simple_Worker
 			
 			$status = $e->getCode() . ' - ' . $e->getMessage();
 		}
-
-		echo $response->getBody() . "\n";
 
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');

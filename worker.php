@@ -17,6 +17,9 @@ class Simple_Worker
 
     public function __construct($config)
     {
+        // The worker is *designed* for long running requests...
+        set_time_limit(0);
+
         $this->log("SimpleWorker v".self::VERSION);
 
         if (is_array($config)) {

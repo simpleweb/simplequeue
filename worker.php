@@ -9,7 +9,7 @@
 */
 class Simple_Worker
 {
-    const VERSION = '0.0.2';
+    const VERSION = '0.0.3';
 
     protected $_config;
     protected $_successQueue;
@@ -78,7 +78,8 @@ class Simple_Worker
 
 		$client = new Zend_Http_Client($msg->url);
         
-		$timeout = 30;
+        // 10 minute timout for those long running jobs!
+		$timeout = (10 * 60);
 		if(isset($msg->timeout)) {
 			$timeout = $msg->timeout;
 		}

@@ -34,7 +34,7 @@ class Simple_Worker
     {
         $this->log("Receiving messages...");
 
-        while ($messages = $this->queue->receive(10)) {
+        while ($messages = $this->queue->receive(1)) {
             if (count($messages) === 0) {
                 // No messages found for processing;
                 sleep(5);

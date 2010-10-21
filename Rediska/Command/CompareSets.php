@@ -5,104 +5,113 @@
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 abstract class Rediska_Command_CompareSets extends Rediska_Command_Abstract
 {
-	protected $_storeConnection;
+    protected $_storeConnection;
 
-	protected $_command;
+    protected $_command;
     protected $_storeCommand;
 
-    protected function _create(array $names, $storeName = null) 
+    /**
+     * Create command
+     *
+     * @param array            $keys     Array of key names
+     * @param string[optional] $storeKey Store to set with key name
+     * @return Rediska_Connection_Exec
+     */
+    public function create(array $keys, $storeKey = null)
     {
-        if (empty($names)) {
+        if (empty($keys)) {
             throw new Rediska_Command_Exception('You must specify sets');
         }
 
         $connections = array();
-        $namesByConnections = array();
-        foreach ($names as $name) {
-            $connection = $this->_rediska->getConnectionByKeyName($name);
+        $keysByConnections = array();
+        foreach ($keys as $key) {
+            $connection = $this->_rediska->getConnectionByKeyName($key);
             $connectionAlias = $connection->getAlias();
             if (!array_key_exists($connectionAlias, $connections)) {
                 $connections[$connectionAlias] = $connection;
-                $namesByConnections[$connectionAlias] = array();
+                $keysByConnections[$connectionAlias] = array();
             }
-            $namesByConnections[$connectionAlias][] = $name;
+            $keysByConnections[$connectionAlias][] = $key;
         }
 
         if (count($connections) == 1) {
-        	$connectionValues = array_values($connections);
+            $connectionValues = array_values($connections);
             $connection = $connectionValues[0];
 
-            if (!is_null($storeName)) {
-                $storeConnection = $this->_rediska->getConnectionByKeyName($storeName);
-                if ($storeConnection->getAlias() == $connection->getAlias()) {
-                	$command = "{$this->_storeCommand} {$this->_rediska->getOption('namespace')}$storeName";
+            if (!is_null($storeKey)) {
+                $storeConnection = $this->_rediska->getConnectionByKeyName($storeKey);
+                if ($storeConnection === $connection) {
+                    $command = "{$this->_storeCommand} {$this->_rediska->getOption('namespace')}$storeKey";
                 } else {
-                	$this->setAtomic(false);
-                	$this->_storeConnection = $storeConnection;
-                	$command = $this->_command;
+                    $this->setAtomic(false);
+                    $this->_storeConnection = $storeConnection;
+                    $command = $this->_command;
                 }
             } else {
-            	$command = $this->_command;
+                $command = $this->_command;
             }
 
             $connectionKeys = array_keys($connections);
             $connectionAlias = $connectionKeys[0];
 
-            foreach($namesByConnections[$connectionAlias] as $name) {
-                $command .= " {$this->_rediska->getOption('namespace')}$name";
+            foreach($keysByConnections[$connectionAlias] as $key) {
+                $command .= " {$this->_rediska->getOption('namespace')}$key";
             }
 
-            $this->_addCommandByConnection($connection, $command);
+            return new Rediska_Connection_Exec($connection, $command);
         } else {
             $this->setAtomic(false);
 
-            foreach($namesByConnections as $connectionAlias => $keys) {
-                foreach($keys as $key) {
+            $commands = array();
+            foreach($keysByConnections as $connectionAlias => $keys) {
+                foreach ($keys as $key) {
                     $command = "SMEMBERS {$this->_rediska->getOption('namespace')}$key";
-
-                    $this->_addCommandByConnection($connections[$connectionAlias], $command);
+                    $commands[] = new Rediska_Connection_Exec($connections[$connectionAlias], $command);
                 }
             }
+
+            return $commands;
         }
     }
 
-    abstract protected function _compareSets($sets);
-
-    protected function _parseResponses($responses)
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return boolean|array
+     */
+    public function parseResponses($responses)
     {
-		if (!$this->isAtomic()) {
-    		if ($this->_storeConnection) {
+        if (!$this->isAtomic()) {
+            if ($this->_storeConnection) {
                 $values = $responses[0];
-    		} else {
-    			$values = array_values($this->_compareSets($responses));
-    		}
-
-    		$unserializedValues = array();
-            foreach($values as $value) {
-                $unserializedValues[] = $this->_rediska->unserialize($value);
+            } else {
+                $values = array_values($this->_compareSets($responses));
             }
 
-    		if (is_null($this->storeName)) {
-    			return $unserializedValues;
-    		} else {
-    			$this->_rediska->delete($this->storeName);
+            $unserializedValues = array_map(array($this->_rediska->getSerializer(), 'unserialize'), $values);
+
+            if (is_null($this->storeKey)) {
+                return $unserializedValues;
+            } else {
+                $this->_rediska->delete($this->storeKey);
                 foreach($unserializedValues as $value) {
-                    $this->_rediska->addToSet($this->storeName, $value);
+                    $this->_rediska->addToSet($this->storeKey, $value);
                 }
                 return true;
-    		}
+            }
         } else {
             $reply = $responses[0];
-            if (is_null($this->storeName)) {
-                foreach($reply as &$value) {
-                    $value = $this->_rediska->unserialize($value);
-                }
+            if (is_null($this->storeKey)) {
+                $reply = array_map(array($this->_rediska->getSerializer(), 'unserialize'), $reply);
             } else {
                 $reply = (boolean)$reply;
             }
@@ -110,4 +119,6 @@ abstract class Rediska_Command_CompareSets extends Rediska_Command_Abstract
             return $reply;
         }
     }
+
+    abstract protected function _compareSets($sets);
 }

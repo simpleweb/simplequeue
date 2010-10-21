@@ -5,19 +5,20 @@
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Key distributor
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 interface Rediska_KeyDistributor_Interface
 {
-	/**
-	 * Add connection
-	 * 
-	 * @param string $connectionString Connection string: '127.0.0.1:6379'
-	 * @param integer $weight Connection weight
-	 * @return $this
-	 */
+    /**
+     * Add connection
+     * 
+     * @param string $connectionString Connection string: '127.0.0.1:6379'
+     * @param integer $weight Connection weight
+     * @return $this
+     */
     public function addConnection($connectionString, $weight = Rediska_Connection::DEFAULT_WEIGHT);
 
     /**

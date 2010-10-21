@@ -3,33 +3,37 @@
 /**
  * Get member score from Sorted Set
  * 
- * @param string $name
- * @param mixin $value
- * @return number
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_GetScoreFromSortedSet extends Rediska_Command_Abstract
 {
+    /**
+     * Supported version
+     *
+     * @var string
+     */
     protected $_version = '1.1';
 
-    protected function _create($name, $value)
+    /**
+     * Create command
+     *
+     * @param string $key    Key name
+     * @param mixed  $member Member value
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $member)
     {
-        $connection = $this->_rediska->getConnectionByKeyName($name);
+        $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $value = $this->_rediska->serialize($value);
+        $member = $this->_rediska->getSerializer()->serialize($member);
 
-        $command = array('ZSCORE', "{$this->_rediska->getOption('namespace')}$name", $value);
+        $command = array('ZSCORE', $this->_rediska->getOption('namespace') . $key, $member);
 
-        $this->_addCommandByConnection($connection, $command);
-    }
-
-    protected function _parseResponses($responses)
-    {
-        return $responses[0];
+        return new Rediska_Connection_Exec($connection, $command);
     }
 }

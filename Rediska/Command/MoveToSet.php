@@ -3,47 +3,57 @@
 /**
  * Move the specified member from one Set to another atomically
  * 
- * @param string $fromName From key name
- * @param string $toName   To key name
- * @param mixin  $value    Value
- * @return boolean
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_MoveToSet extends Rediska_Command_Abstract
 {
-	protected $_multi = false;
+    protected $_multi = false;
 
-    protected function _create($fromName, $toName, $value)
-    {    	
-        $fromNameConnection = $this->_rediska->getConnectionByKeyName($fromName);
-        $toNameConnection = $this->_rediska->getConnectionByKeyName($toName);
+    /**
+     * Create command
+     *
+     * @param string $fromKey From key name
+     * @param string $toKey   To key name
+     * @param mixed  $member  Member
+     * @return Rediska_Connection_Exec
+     */
+    public function create($fromKey, $toKey, $member)
+    {        
+        $fromKeyConnection = $this->_rediska->getConnectionByKeyName($fromKey);
+        $toKeyConnection = $this->_rediska->getConnectionByKeyName($toKey);
         
-        $value = $this->_rediska->serialize($value);
+        $member = $this->_rediska->getSerializer()->serialize($member);
 
-        if ("$fromNameConnection" == "$toNameConnection") {
-            $command = "SMOVE {$this->_rediska->getOption('namespace')}$fromName {$this->_rediska->getOption('namespace')}$toName "  . strlen($value) . Rediska::EOL . $value;
+        if ($fromKeyConnection === $toKeyConnection) {
+            $command = "SMOVE {$this->_rediska->getOption('namespace')}$fromKey {$this->_rediska->getOption('namespace')}$toKey "  . strlen($member) . Rediska::EOL . $member;
         } else {
-        	$this->setAtomic(false);
-            $command = "SISMEMBER {$this->_rediska->getOption('namespace')}$fromName " . strlen($value) . Rediska::EOL . $value;
+            $this->setAtomic(false);
+            $command = "SISMEMBER {$this->_rediska->getOption('namespace')}$fromKey " . strlen($member) . Rediska::EOL . $member;
         }
 
-        $this->_addCommandByConnection($fromNameConnection, $command);
+        return new Rediska_Connection_Exec($fromKeyConnection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param array $responses
+     * @return boolean
+     */
+    public function parseResponses($responses)
     {
         if (!$this->isAtomic()) {
-        	if ($responses[0]) {
-        		$this->_rediska->deleteFromSet($this->fromName, $this->value);
-        		return $this->_rediska->addToSet($this->toName, $this->value);
-        	} else {
-        		return false;
-        	}
+            if ($responses[0]) {
+                $this->_rediska->deleteFromSet($this->fromKey, $this->member);
+                return $this->_rediska->addToSet($this->toKey, $this->member);
+            } else {
+                return false;
+            }
         } else {
             return (boolean)$responses[0];
         }

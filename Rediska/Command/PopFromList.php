@@ -3,51 +3,63 @@
 /**
  * Return and remove the last element of the List at key 
  * 
- * @param string $name       Key name
- * @param string $pushToName Push value to another key
- * @return mixin
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_PopFromList extends Rediska_Command_Abstract
 {
-    protected function _create($name, $pushToName = null) 
+    /**
+     * Create command
+     *
+     * @param string           $name       Key name
+     * @param string[optional] $pushToName If not null - push value to another key.
+     * @return Rediska_Connection_Exec
+     */
+    public function create($key, $pushToKey = null)
     {
-    	$connection = $this->_rediska->getConnectionByKeyName($name);
-    	
-        if (is_null($pushToName)) {
-            $command = "RPOP {$this->_rediska->getOption('namespace')}$name";
+        $connection = $this->_rediska->getConnectionByKeyName($key);
+
+        if (is_null($pushToKey)) {
+            $command = "RPOP {$this->_rediska->getOption('namespace')}$key";
         } else {
-            $toConnection = $this->_rediska->getConnectionByKeyName($pushToName);
+            $toConnection = $this->_rediska->getConnectionByKeyName($pushToKey);
 
             if ($connection->getAlias() == $toConnection->getAlias()) {
-                $this->_checkVersion('1.1');
+                $this->_throwExceptionIfNotSupported('1.1');
 
-            	$command = array('RPOPLPUSH',
-            	                 "{$this->_rediska->getOption('namespace')}$name",
-            	                 "{$this->_rediska->getOption('namespace')}$pushToName");
+                $command = array('RPOPLPUSH',
+                                 "{$this->_rediska->getOption('namespace')}$key",
+                                 "{$this->_rediska->getOption('namespace')}$pushToKey");
             } else {
-            	$this->setAtomic(false);
+                $this->setAtomic(false);
 
-                $command = "RPOP {$this->_rediska->getOption('namespace')}$name";
+                $command = "RPOP {$this->_rediska->getOption('namespace')}$key";
             }
         }
 
-        $this->_addCommandByConnection($connection, $command);
+        return new Rediska_Connection_Exec($connection, $command);
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param string $response
+     * @return mixed
+     */
+    public function parseResponse($response)
     {
         if (!$this->isAtomic()) {
-            $value = $this->_rediska->unserialize($responses[0]);
+            $value = $this->_rediska->getSerializer()->unserialize($response);
 
-            return $this->_rediska->prependToList($this->pushToName, $value);
+            $this->_rediska->prependToList($this->pushToKey, $value);
+
+            return $value;
         } else {
-            return $this->_rediska->unserialize($responses[0]);
+            return $this->_rediska->getSerializer()->unserialize($response);
         }
     }
 }

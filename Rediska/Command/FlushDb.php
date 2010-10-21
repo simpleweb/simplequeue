@@ -3,18 +3,22 @@
 /**
  * Remove all the keys of the currently selected DB
  * 
- * @param boolean $all Remove from all Db
- * @return boolean
- * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 class Rediska_Command_FlushDb extends Rediska_Command_Abstract
 {
-    protected function _create($all = false) 
+    /**
+     * Create command
+     *
+     * @param boolean[optional] $all Remove from all Db. For default is false.
+     * @return Rediska_Connection_Exec
+     */
+    public function create($all = false) 
     {
         if ($all) {
             $command = "FLUSHALL";
@@ -22,12 +26,21 @@ class Rediska_Command_FlushDb extends Rediska_Command_Abstract
             $command = "FLUSHDB";
         }
 
+        $commands = array();
         foreach($this->_rediska->getConnections() as $connection) {
-            $this->_addCommandByConnection($connection, $command);
+            $commands[] = new Rediska_Connection_Exec($connection, $command);
         }
+        
+        return $commands;
     }
 
-    protected function _parseResponses($responses)
+    /**
+     * Parse response
+     *
+     * @param string $response
+     * @return boolean
+     */
+    public function parseResponse($response)
     {
         return true;
     }

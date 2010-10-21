@@ -5,64 +5,78 @@
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.4.2
+ * @subpackage Commands
+ * @version 0.5.0
  * @link http://rediska.geometria-lab.net
- * @licence http://www.opensource.org/licenses/bsd-license.php
+ * @license http://www.opensource.org/licenses/bsd-license.php
  */
 abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstract
 {
-	const SUM = 'sum';
+    const SUM = 'sum';
     const MAX = 'max';
     const MIN = 'min';
 
-    protected $_version = '1.3.5';
+    /**
+     * Supported version
+     *
+     * @var string
+     */
+    protected $_version = '1.3.12';
 
     protected $_command;
 
-	protected $_storeConnection;
-	protected $_names   = array();
-	protected $_weights = array();
+    protected $_storeConnection;
+    protected $_keys   = array();
+    protected $_weights = array();
 
-    protected function _create(array $names, $storeName, $aggregation = self::SUM)
+    /**
+     * Create command
+     *
+     * @param array  $keys       Array of key names or associative array with weights
+     * @param string $storeKey   Result sorted set key name
+     * @param string $aggregation Aggregation method: SUM (for default), MIN, MAX.
+     * @return Rediska_Connection_Exec
+     */
+    public function create(array $keys, $storeKey, $aggregation = self::SUM)
     {
-        if (empty($names)) {
+        if (empty($keys)) {
             throw new Rediska_Command_Exception('You must specify sorted sets');
         }
 
         // With weights?
         $withWeights = false;
-        foreach($names as $nameOrIndex => $weightOrName) {
-            if (is_string($nameOrIndex)) {
-                $this->_weights = $names;
-                $names = array_keys($names);
+        foreach($keys as $keyOrIndex => $keyOrWeight) {
+            if (is_string($keyOrIndex)) {
+                $this->_weights = $keys;
+                $keys = array_keys($keys);
                 $withWeights = true;
                 break;
             }
         }
 
         $connections = array();
-        $namesByConnections = array();
-        foreach ($names as $name) {
-            $connection = $this->_rediska->getConnectionByKeyName($name);
+        $keysByConnections = array();
+        foreach ($keys as $key) {
+            $connection = $this->_rediska->getConnectionByKeyName($key);
             $connectionAlias = $connection->getAlias();
             if (!array_key_exists($connectionAlias, $connections)) {
                 $connections[$connectionAlias] = $connection;
-                $namesByConnections[$connectionAlias] = array();
+                $keysByConnections[$connectionAlias] = array();
             }
-            $namesByConnections[$connectionAlias][] = $name;
+            $keysByConnections[$connectionAlias][] = $key;
         }
 
         // If only one connection, compare by redis
         if (count($connections) == 1) {
             $connectionValues = array_values($connections);
             $connection = $connectionValues[0];
-            $storeConnection = $this->_rediska->getConnectionByKeyName($storeName);
+            $storeConnection = $this->_rediska->getConnectionByKeyName($storeKey);
 
-            if ($storeConnection->getAlias() == $connection->getAlias()) {
-                $command = array($this->_command, "{$this->_rediska->getOption('namespace')}$storeName", count($names));
-                
-                foreach($names as $name) {
-                    $command[] = "{$this->_rediska->getOption('namespace')}$name";
+            if ($storeConnection === $connection) {
+                $command = array($this->_command, "{$this->_rediska->getOption('namespace')}$storeKey", count($keys));
+
+                foreach($keys as $key) {
+                    $command[] = $this->_rediska->getOption('namespace') . $key;
                 }
     
                 if ($withWeights) {
@@ -75,7 +89,7 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
                     $command[] = strtoupper($aggregation);
                 }
 
-                return $this->_addCommandByConnection($connection, $command);
+                return new Rediska_Connection_Exec($connection, $command);
             }
         }
 
@@ -83,43 +97,50 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
         
         // Set default weights
         if (!$withWeights) {
-            $this->_weights = array_fill_keys($names, 1);
+            $this->_weights = array_fill_keys($keys, 1);
         }
 
         $this->setAtomic(false);
-        foreach($namesByConnections as $connectionAlias => $keys) {
+        $commands = array();
+        foreach($keysByConnections as $connectionAlias => $keys) {
             foreach($keys as $key) {
-                $this->_names[] = $key;
+                $this->_keys[] = $key;
                 $command = array("ZRANGE", "{$this->_rediska->getOption('namespace')}$key", 0, -1, 'WITHSCORES');
-                $this->_addCommandByConnection($connections[$connectionAlias], $command);
+                $commands[] = new Rediska_Connection_Exec($connections[$connectionAlias], $command);
             }
         }
-    }
-    
-    abstract protected function _compareSets($sets);
 
-    protected function _parseResponses($responses)
+        return $commands;
+    }
+
+    /**
+     * Parse responses
+     *
+     * @param array $responses
+     * @return integer
+     */
+    public function parseResponses($responses)
     {
         if ($this->isAtomic()) {
-    	   return $responses[0];
+           return $responses[0];
         } else {
             $sets = array();
             $valuesWithScores = array();
-            foreach ($this->_names as $name) {
-                $sets[$name] = array();
+            foreach ($this->_keys as $key) {
+                $sets[$key] = array();
                 $response = current($responses);
                 next($responses);
                 $isValue = true;
                 foreach ($response as $valueOrScore) {
                     if ($isValue) {
                         $value = $valueOrScore;
-                        $sets[$name][] = $value;
+                        $sets[$key][] = $value;
                         if (!isset($valuesWithScores[$value])) {
                             $valuesWithScores[$value] = array();
                         }
                     } else {
                         $score = $valueOrScore;
-                        $valuesWithScores[$value][] = $score * $this->_weights[$name];
+                        $valuesWithScores[$value][] = $score * $this->_weights[$key];
                     }
                     $isValue = !$isValue;
                 }
@@ -146,12 +167,9 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
                         throw new Rediska_Command_Exception('Unknown aggregation method ' . $this->aggregation);
                 }
 
-                // TODO: Fix dirty hack
-                //$score = floor($score * 100000) / 100000;
+                $value = $this->_rediska->getSerializer()->unserialize($value);
 
-                $value = $this->_rediska->unserialize($value);
-
-                $pipeline->addToSortedSet($this->storeName, $value, $score);
+                $pipeline->addToSortedSet($this->storeKey, $value, $score);
 
                 $count++;
             }
@@ -161,4 +179,6 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
             return $count;
         }
     }
+
+    abstract protected function _compareSets($sets);
 }

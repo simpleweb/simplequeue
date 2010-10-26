@@ -9,6 +9,8 @@
     queue_name = queue + count
     # Create a new watch for each queue worker
     God.watch do |w|
+      w.group = 'simplequeue'
+
       w.name = "simplequeue-redis-worker-#{queue}"
       w.dir = File.dirname(__FILE__)
       w.interval = 30.seconds # default

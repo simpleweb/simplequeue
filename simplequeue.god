@@ -11,7 +11,7 @@
     God.watch do |w|
       w.group = 'simplequeue'
 
-      w.name = "simplequeue-redis-worker-#{queue}"
+      w.name = "simplequeue-redis-worker-#{queue_name}"
       w.dir = File.dirname(__FILE__)
       w.interval = 30.seconds # default
       w.env = { 'SIMPLEQUEUE_CONFIG' => queue_name }

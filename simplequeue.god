@@ -14,7 +14,7 @@
       w.name = "simplequeue-redis-worker-#{queue_name}"
       w.dir = File.dirname(__FILE__)
       w.interval = 30.seconds # default
-      w.env = { 'SIMPLEQUEUE_CONFIG' => queue_name }
+      w.env = { 'SIMPLEQUEUE_CONFIG' => queue }
       w.start = "php run.php"
       w.log = File.dirname(__FILE__) + "/log/simplequeue-#{queue}.log"
 

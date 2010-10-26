@@ -128,7 +128,7 @@ class Simple_Worker
 
 		} catch (Exception $e) {
 			
-			$status = $e->getCode() . ' - ' . $e->getMessage();
+			$status = $e->getCode() . ' - ' . $e->getMessage() . "\n";
 		}
 
    		if($status==200) {

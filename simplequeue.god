@@ -6,7 +6,7 @@
 
 %w{default webhooks}.each do |queue|
   1.upto(5) do |count|
-    queue_name = queue + count
+    queue_name = "#{queue}#{count}"
     # Create a new watch for each queue worker
     God.watch do |w|
       w.group = 'simplequeue'
@@ -16,7 +16,7 @@
       w.interval = 30.seconds # default
       w.env = { 'SIMPLEQUEUE_CONFIG' => queue_name }
       w.start = "php run.php"
-      w.log = File.dirname(__FILE__) + "/log/simplequeue-#{queue_name}.log"
+      w.log = File.dirname(__FILE__) + "/log/simplequeue-#{queue}.log"
 
       # determine the state on startup
       w.transition(:init, { true => :up, false => :start }) do |on|

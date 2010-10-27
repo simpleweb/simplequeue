@@ -139,6 +139,9 @@ class Simple_Worker
 			$this->queue->deleteMessage($message);
 		} else {
 			$this->log("{$status} - Failed.");
+			if (isset($response)) {
+                $this->log($response->getBody());
+			}
 			$this->queue->deleteMessage($message);
 			
 			$maxRetries = 5;

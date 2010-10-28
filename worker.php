@@ -131,6 +131,13 @@ class Simple_Worker
 			$status = $e->getCode() . ' - ' . $e->getMessage() . "\n";
 		}
 
+        if (isset($response)) {
+            $body = $response->getBody();
+            if (!empty($body)) {
+                $this->log($body);
+            }
+		}
+
    		if($status==200) {
 			$this->log('200 - Success (Deleting Message From Queue)');
 			$msg->suceededAt = date('r');
@@ -139,9 +146,7 @@ class Simple_Worker
 			$this->queue->deleteMessage($message);
 		} else {
 			$this->log("{$status} - Failed.");
-			if (isset($response)) {
-                $this->log($response->getBody());
-			}
+
 			$this->queue->deleteMessage($message);
 			
 			$maxRetries = 5;

@@ -9,7 +9,7 @@ require_once dirname(__FILE__) . '/../Rediska.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -23,10 +23,14 @@ class Rediska_Key extends Rediska_Key_Abstract
      */
     public function setValue($value)
     {
-        $reply = $this->_getRediskaOn()->set($this->getName(), $value);
+        if ($this->getExpire() !== null && !$this->isExpireTimestamp()) {
+            $reply = $this->setAndExpire($value, $this->getExpire());
+        } else {
+            $reply = $this->_getRediskaOn()->set($this->getName(), $value);
 
-        if ($reply && !is_null($this->getExpire())) {
-            $this->expire($this->getExpire(), $this->isExpireTimestamp());
+            if ($reply && !is_null($this->getExpire())) {
+                $this->expire($this->getExpire(), $this->isExpireTimestamp());
+            }
         }
 
         return $reply;
@@ -45,7 +49,8 @@ class Rediska_Key extends Rediska_Key_Abstract
     /**
      * Increment integer value
      * 
-     * @param unknown_type $amount
+     * @param integer $amount
+     * @return integer
      */
     public function increment($amount = 1)
     {
@@ -55,11 +60,47 @@ class Rediska_Key extends Rediska_Key_Abstract
     /**
      * Decrement integer value
      * 
-     * @param unknown_type $amount
+     * @param integer $amount
+     * @return integer
      */
     public function decrement($amount = 1)
     {
         return $this->_getRediskaOn()->decrement($this->getName(), $amount);
+    }
+
+    /**
+     * Set and expire
+     *
+     * @param mixed   $value
+     * @param integer $seconds
+     * @return boolean
+     */
+    public function setAndExpire($value, $seconds)
+    {
+        return $this->_getRediskaOn()->setAndExpire($this->getName(), $value, $seconds);
+    }
+
+    /**
+     * Append value
+     *
+     * @param mixed $value Value
+     * @return integer
+     */
+    public function append($value)
+    {
+        return $this->_getRediskaOn()->append($this->getName(), $value);
+    }
+
+    /**
+     * Substring value
+     *
+     * @param integer           $start Start
+     * @param integer[optional] $end   End. If end is omitted, the substring starting from $start until the end of the string will be returned. For default end of string
+     * @return string
+     */
+    public function substring($start, $end = -1)
+    {
+        return $this->_getRediskaOn()->substring($this->getName(), $start, $end);
     }
 
     /**
@@ -72,6 +113,11 @@ class Rediska_Key extends Rediska_Key_Abstract
         return new Rediska_Key_GetOrSetValue($this, $object);
     }
 
+    /**
+     * Magic for get value
+     *
+     * @return string
+     */
     public function __toString()
     {
         return (string)$this->getValue();
@@ -83,7 +129,7 @@ class Rediska_Key extends Rediska_Key_Abstract
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */

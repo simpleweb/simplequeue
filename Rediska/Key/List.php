@@ -9,7 +9,7 @@ require_once dirname(__FILE__) . '/../../Rediska.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -54,7 +54,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
      * 
      * @return integer
      */
-    public function count()
+    public function getLength()
     {
         return $this->_getRediskaOn()->getListLength($this->getName());
     }
@@ -91,8 +91,8 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     /**
      * Set a new value as the element at index position of the List
      * 
-     * @param mixed $value Value
      * @param integer $index Index
+     * @param mixed $value Value
      * @return boolean
      */
     public function set($index, $value)
@@ -247,6 +247,11 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     /**
      * Implement intrefaces
      */
+
+    public function count()
+    {
+        return $this->getLength();
+    }
 
     public function getIterator()
     {

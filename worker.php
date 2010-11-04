@@ -47,8 +47,13 @@ class Simple_Worker
                     $this->_callJob($message);
                 } catch (Exception $e) {
                     $this->log("Failed to run job: {$e->getMessage()}");
-                    $this->queue->deleteMessage($message);
-                    $this->_failQueue->send($message->body);
+
+                    try {
+                        $this->queue->deleteMessage($message);
+                        $this->_failQueue->send($message->body);
+                    } catch (Exception $e) {
+                        $this->log("FAILED TO LOG FAILED JOB: {$e->getMessage()}");
+                    }
                 }
             }
         }

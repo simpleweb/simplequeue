@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -77,6 +77,7 @@ class Rediska_Commands
         'getsortedset'               => 'Rediska_Command_GetSortedSet',
         'getfromsortedsetbyscore'    => 'Rediska_Command_GetFromSortedSetByScore',
         'getsortedsetlength'         => 'Rediska_Command_GetSortedSetLength',
+        'getsortedsetlengthbyscore'  => 'Rediska_Command_GetSortedSetLengthByScore',
         'incrementscoreinsortedset'  => 'Rediska_Command_IncrementScoreInSortedSet',
         'deletefromsortedsetbyscore' => 'Rediska_Command_DeleteFromSortedSetByScore',
         'deletefromsortedsetbyrank'  => 'Rediska_Command_DeleteFromSortedSetByRank',

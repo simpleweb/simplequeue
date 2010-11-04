@@ -9,7 +9,7 @@ require_once dirname(__FILE__) . '/../../Rediska.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -49,15 +49,27 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
 
         return $result;
     }
-    
+
     /**
      * Get Sorted set length
-     * 
+     *
      * @return integer
      */
-    public function count()
+    public function getLength()
     {
         return $this->_getRediskaOn()->getSortedSetLength($this->getName());
+    }
+
+    /**
+     * Get count of members from sorted set by min and max score
+     *
+     * @param integer $min Min score
+     * @param integer $max Max score
+     * @return integer
+     */
+    public function getLengthByScore($min, $max)
+    {
+        return $this->_getRediskaOn()->getSortedSetLengthByScore($this->getName(), $min, $max);
     }
 
     /**
@@ -217,6 +229,11 @@ class Rediska_Key_SortedSet extends Rediska_Key_Abstract implements IteratorAggr
     /**
      * Implement intrefaces
      */
+
+    public function count()
+    {
+        return $this->getLength();
+    }
 
     public function getIterator()
     {

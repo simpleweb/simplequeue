@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -229,6 +229,29 @@ abstract class Rediska_Command_Abstract implements Rediska_Command_Interface
     public function isQueued()
     {
         return $this->_isQueued;
+    }
+
+    /**
+     * Get Rediska
+     *
+     * @return Rediska
+     */
+    public function getRediska()
+    {
+	    return $this->_rediska;
+    }
+
+    /**
+     * Set Rediska
+     *
+     * @param Rediska $rediska Rediska object
+     * @return Rediska_Command_Abstract
+     */
+    public function setRediska(Rediska $rediska)
+    {
+        $this->_rediska = $rediska; 
+
+        return $this;
     }
 
     /**

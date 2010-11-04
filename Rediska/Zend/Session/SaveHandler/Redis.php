@@ -29,7 +29,7 @@ require_once 'Zend/Session/SaveHandler/Exception.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage ZendFrameworkIntegration
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */

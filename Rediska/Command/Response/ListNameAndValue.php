@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -26,7 +26,7 @@ class Rediska_Command_Response_ListNameAndValue extends ArrayObject
     {
         if (!empty($response)) {
             $name = $response[0];
-            if ($rediska->getOption('namespace') !== '' && strpos($name, $rediska->getOption('namespace')) === 0) {
+            if ($rediska->getOption('namespace') != '' && strpos($name, $rediska->getOption('namespace')) === 0) {
                 $name = substr($name, strlen($rediska->getOption('namespace')));
             }
     

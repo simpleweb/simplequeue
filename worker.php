@@ -9,7 +9,7 @@
 */
 class Simple_Worker
 {
-    const VERSION = '0.0.3';
+    const VERSION = '0.1.0';
 
     protected $_config;
     protected $_successQueue;
@@ -34,7 +34,7 @@ class Simple_Worker
     {
         $this->log("Receiving messages...");
 
-        while ($messages = $this->queue->receive(10)) {
+        while ($messages = $this->queue->receive(1)) {
             if (count($messages) === 0) {
                 // No messages found for processing;
                 sleep(5);
@@ -47,8 +47,13 @@ class Simple_Worker
                     $this->_callJob($message);
                 } catch (Exception $e) {
                     $this->log("Failed to run job: {$e->getMessage()}");
-                    $this->queue->deleteMessage($message);
-                    $this->_failQueue->send($message->body);
+
+                    try {
+                        $this->queue->deleteMessage($message);
+                        $this->_failQueue->send($message->body);
+                    } catch (Exception $e) {
+                        $this->log("FAILED TO LOG FAILED JOB: {$e->getMessage()}");
+                    }
                 }
             }
         }
@@ -129,7 +134,14 @@ class Simple_Worker
 
 		} catch (Exception $e) {
 			
-			$status = $e->getCode() . ' - ' . $e->getMessage();
+			$status = $e->getCode() . ' - ' . $e->getMessage() . "\n";
+		}
+
+        if (isset($response)) {
+            $body = $response->getBody();
+            if (!empty($body)) {
+                $this->log($body);
+            }
 		}
 
    		if($status==200) {
@@ -140,6 +152,7 @@ class Simple_Worker
 			$this->queue->deleteMessage($message);
 		} else {
 			$this->log("{$status} - Failed.");
+
 			$this->queue->deleteMessage($message);
 			
 			$maxRetries = 5;

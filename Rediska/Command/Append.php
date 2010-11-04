@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -15,8 +15,8 @@ class Rediska_Command_Append extends Rediska_Command_Abstract
     /**
      * Create command
      *
-     * @param $key    Key name
-     * @param $value  Value
+     * @param string $key    Key name
+     * @param mixed  $value  Value
      * @return Rediska_Connection_Exec
      */
     public function create($key, $value)

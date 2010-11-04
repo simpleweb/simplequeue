@@ -10,7 +10,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.0
+ * @version 0.5.1
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -52,11 +52,14 @@ class Rediska_Command_GetKeysByPattern extends Rediska_Command_Abstract
             }
         }
 
-        $namespaceLength = strlen($this->_rediska->getOption('namespace'));
         $keys = array_unique($keys);
-        foreach($keys as &$key) {
-            if (strpos($key, $this->_rediska->getOption('namespace')) === 0) {
-                $key = substr($key, $namespaceLength);
+
+        if ($this->_rediska->getOption('namespace') != '') {
+            $namespaceLength = strlen($this->_rediska->getOption('namespace'));
+            foreach($keys as &$key) {
+                if (strpos($key, $this->_rediska->getOption('namespace')) === 0) {
+                    $key = substr($key, $namespaceLength);
+                }
             }
         }
 

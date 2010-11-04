@@ -9,7 +9,7 @@
 */
 class Simple_Worker
 {
-    const VERSION = '0.0.3';
+    const VERSION = '0.1.0';
 
     protected $_config;
     protected $_successQueue;

@@ -44,7 +44,6 @@ class Simple_Worker
             $this->log("Got " . count($messages) . " messages");
             foreach ($messages as $message) {
                 try {
-                    $this->log("\n" . "Preparing to run:\n" . $message . "\n");
                     $this->_callJob($message);
                 } catch (Exception $e) {
                     $this->log("Failed to run job: {$e->getMessage()}");

@@ -10,7 +10,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -24,12 +24,10 @@ class Rediska_Command_GetKeysByPattern extends Rediska_Command_Abstract
      */
     public function create($pattern) 
     {
-        if ($pattern == '') {
-            throw new Rediska_Command_Exception("Pattern can't be empty");
-        }
-
         $commands = array();
-        $command = "KEYS {$this->_rediska->getOption('namespace')}$pattern";
+        $command = array('KEYS',
+                         $this->_rediska->getOption('namespace') . $pattern);
+
         foreach($this->_rediska->getConnections() as $connection) {
             $commands[] = new Rediska_Connection_Exec($connection, $command);
         }

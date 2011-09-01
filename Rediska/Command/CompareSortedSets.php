@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -73,7 +73,9 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
             $storeConnection = $this->_rediska->getConnectionByKeyName($storeKey);
 
             if ($storeConnection === $connection) {
-                $command = array($this->_command, "{$this->_rediska->getOption('namespace')}$storeKey", count($keys));
+                $command = array($this->_command,
+                                 $this->_rediska->getOption('namespace') . $storeKey,
+                                 count($keys));
 
                 foreach($keys as $key) {
                     $command[] = $this->_rediska->getOption('namespace') . $key;
@@ -105,7 +107,11 @@ abstract class Rediska_Command_CompareSortedSets extends Rediska_Command_Abstrac
         foreach($keysByConnections as $connectionAlias => $keys) {
             foreach($keys as $key) {
                 $this->_keys[] = $key;
-                $command = array("ZRANGE", "{$this->_rediska->getOption('namespace')}$key", 0, -1, 'WITHSCORES');
+                $command = array('ZRANGE',
+                                 $this->_rediska->getOption('namespace') . $key,
+                                 0,
+                                 -1,
+                                 'WITHSCORES');
                 $commands[] = new Rediska_Connection_Exec($connections[$connectionAlias], $command);
             }
         }

@@ -8,7 +8,7 @@ require_once dirname(__FILE__) . '/../Rediska.php';
  *
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -87,14 +87,18 @@ class Rediska_Monitor extends Rediska_Options_RediskaInstance implements Iterato
      *
      * @return array
      */
-    public function getCommand()
+    public function getCommand($timeout = null)
     {
+        if (!$timeout && $this->getTimeout()) {
+            $timeout = $this->getTimeout();
+        }
+
         // Get message from connections
         while (true) {
             /* @var $connection Rediska_Connection */
             foreach ($this->_connections as $connection) {
-                if ($this->_timeout) {
-                    $timeLeft = ($this->_timeStart + $this->_timeout) - time();
+                if ($timeout) {
+                    $timeLeft = ($this->_timeStart + $timeout) - time();
 
                     if ($timeLeft <= 0) {
                         // Reset timeStart if time started from this method
@@ -124,7 +128,7 @@ class Rediska_Monitor extends Rediska_Options_RediskaInstance implements Iterato
 
                     return $response;
                 } catch (Rediska_Connection_TimeoutException $e) {
-                    if (!$this->_timeout) {
+                    if (!$timeout) {
                         throw $e;
                     }
 

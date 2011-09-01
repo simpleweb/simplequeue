@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -22,16 +22,12 @@ class Rediska_Command_TruncateList extends Rediska_Command_Abstract
      */
     public function create($key, $start, $end)
     {
-        if (!is_integer($start)) {
-            throw new Rediska_Command_Exception("Start must be integer");
-        }
-        if (!is_integer($end)) {
-            throw new Rediska_Command_Exception("End must be integer");
-        }
-
         $connection = $this->_rediska->getConnectionByKeyName($key);
 
-        $command = "LTRIM {$this->_rediska->getOption('namespace')}$key $start $end";
+        $command = array('LTRIM',
+                         $this->_rediska->getOption('namespace') . $key,
+                         $start,
+                         $end);
         
         return new Rediska_Connection_Exec($connection, $command);
     }

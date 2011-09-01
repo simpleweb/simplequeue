@@ -9,7 +9,7 @@ require_once dirname(__FILE__) . '/../../Rediska.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -227,6 +227,16 @@ class Rediska_Key_Hash extends Rediska_Key_Abstract implements IteratorAggregate
     {
         return $this->_getRediskaOn()->getHashValues($this->getName());
     }
+    
+    /**
+     * Get hash fields and values
+     * 
+     * @return array
+     */
+    public function getFieldsAndValues()
+    {
+        return $this->_getRediskaOn()->getHash($this->getName());
+    }
 
     /**
      * Get hash length
@@ -245,7 +255,7 @@ class Rediska_Key_Hash extends Rediska_Key_Abstract implements IteratorAggregate
      */
     public function toArray()
     {
-        return $this->_getRediskaOn()->getHash($this->getName());
+        return $this->getFieldsAndValues();
     }
 
     /* Countable implementation */

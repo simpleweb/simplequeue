@@ -29,7 +29,7 @@ require_once 'Zend/Config.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage ZendFrameworkIntegration
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -77,10 +77,10 @@ class Rediska_Zend_Auth_Adapter_Redis extends Rediska_Options_RediskaInstance im
      * @var array
      */
     protected $_options = array(
-        'useridkey'               => 'user_ids:*',
-        'userdatakey'             => 'users:*',
-        'credentialattributename' => 'password',
-        'userdataisarray'         => false,
+        'userIdKey'               => 'user_ids:*',
+        'userDataKey'             => 'users:*',
+        'credentialAttributeName' => 'password',
+        'userDataIsArray'         => false,
     );
 
     /**
@@ -163,7 +163,7 @@ class Rediska_Zend_Auth_Adapter_Redis extends Rediska_Options_RediskaInstance im
                 throw new Zend_Auth_Adapter_Exception("User data key '$userDataKey' not found");
             }
 
-            $credentialAttributeName = $this->getOption('credentialattributename');
+            $credentialAttributeName = $this->getOption('credentialAttributeName');
             if ($this->getOption('userDataIsArray')) {
                 if (!array_key_exists($credentialAttributeName, $userData)) {
                     throw new Zend_Auth_Adapter_Exception("Credential key with name '$credentialAttributeName' not found in user data");

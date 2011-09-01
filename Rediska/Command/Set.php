@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -48,10 +48,11 @@ class Rediska_Command_Set extends Rediska_Command_Abstract
             }
 
             $commands = array();
+            $namespace = $this->_rediska->getOption('namespace');
             foreach($keysByConnections as $connectionAlias => $data) {
                 $command = array($overwrite ? 'MSET' : 'MSETNX');
                 foreach($data as $key => $value) {
-                    $command[] = $this->_rediska->getOption('namespace') . $key;
+                    $command[] = $namespace . $key;
                     $command[] = $this->_rediska->getSerializer()->serialize($value);
                 }
                 $commands[] = new Rediska_Connection_Exec($connections[$connectionAlias], $command);
@@ -66,14 +67,10 @@ class Rediska_Command_Set extends Rediska_Command_Abstract
 
             $value = $this->_rediska->getSerializer()->serialize($value);
 
-            $command = '';
-            if ($overwrite) {
-                $command = 'SET';
-            } else {
-                $command = 'SETNX';
-            }
-            $command .= " {$this->_rediska->getOption('namespace')}$key " . strlen($value) . Rediska::EOL . $value;
-    
+            $command = array($overwrite ? 'SET' : 'SETNX',
+                             $this->_rediska->getOption('namespace') . $key,
+                             $value);
+
             return new Rediska_Connection_Exec($connection, $command);
         }
     }

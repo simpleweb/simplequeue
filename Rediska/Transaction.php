@@ -5,7 +5,7 @@
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -33,18 +33,18 @@ class Rediska_Transaction
     protected $_specifiedConnection;
 
     /**
-     * Is transaction started
-     * 
-     * @var boolean
-     */
-    protected $_isStarted = false;
-
-    /**
      * Commands buffer
      * 
      * @var array
      */
     protected $_commands = array();
+
+    /**
+     * If transaction watched something
+     *
+     * @var bool
+     */
+    protected $_isWatched = false;
 
     /**
      * Constructor
@@ -56,38 +56,59 @@ class Rediska_Transaction
     {
         $this->_rediska             = $rediska;
         $this->_specifiedConnection = $specifiedConnection;
-        $this->_connection          = clone $connection;
+        $this->_connection          = $connection;
 
-        $this->_throwIfNotSupported();
+        $this->_throwIfNotSupported('Transactions', '1.3.8');
     }
 
     /**
-     * Start transaction
-     * 
-     * @return boolean
+     * Marks the given keys to be watched for conditional execution of a transaction.
+     *
+     * @throws Rediska_Transaction_Exception
+     * @param  $keyOrKeys Key or array of keys
+     * @return Rediska_Transaction
      */
-    public function start()
+    public function watch($keyOrKeys)
     {
-        if ($this->isStarted()) {
-            return false;
+        $this->_throwIfNotSupported('Watch', '2.1');
+
+        $command = array('WATCH');
+
+        if (!is_array($keyOrKeys)) {
+            $keys = array($keyOrKeys);
+        } else {
+            $keys = $keyOrKeys;
         }
 
-        $multi = new Rediska_Connection_Exec($this->_connection, 'MULTI');
-        $multi->execute();
-        
-        $this->_isStarted = true;
+        foreach($keys as $key) {
+            $command[] = $this->_rediska->getOption('namespace') . $key;
+        }
 
-        return true;
+        $exec = new Rediska_Connection_Exec($this->_connection, $command);
+        $exec->execute();
+
+        $this->_isWatched = true;
+
+        return $this;
     }
 
     /**
-     * Is transaction started
-     * 
-     * @return boolean
+     * Flushes all the previously watched keys for a transaction.
+     *
+     * @return Rediska_Transaction
      */
-    public function isStarted()
+    public function unwatch()
     {
-        return $this->_isStarted;
+        $this->_throwIfNotSupported('Unwatch', '2.1');
+
+        $command = 'UNWATCH';
+
+        $exec = new Rediska_Connection_Exec($this->_connection, $command);
+        $exec->execute();
+
+        $this->_isWatched = false;
+
+        return $this;
     }
 
     /**
@@ -99,23 +120,29 @@ class Rediska_Transaction
     {
         $results = array();
 
-        if ($this->isStarted()) {
-            $exec = new Rediska_Connection_Exec($this->_connection, 'EXEC');
-            $responses = $exec->execute();
+        $this->_rediska->getProfiler()->start($this);
 
-            if (!empty($this->_commands)) {
-                if (!$responses) {
-                    throw new Rediska_Transaction_Exception('Transaction has been aborted by server');
-                }
+        $multi = new Rediska_Connection_Exec($this->_connection, 'MULTI');
+        $multi->execute();
 
-                foreach($this->_commands as $i => $command) {
-                    $results[] = $command->parseResponses(array($responses[$i]));
-                }
-            }
-
-            $this->_commands = array();
-            $this->_isStarted = false;
+        foreach($this->_commands as $command) {
+            $command->execute();
         }
+
+        $exec = new Rediska_Connection_Exec($this->_connection, 'EXEC');
+        $responses = $exec->execute();
+
+        $this->_rediska->getProfiler()->stop();
+
+        if (!$responses) {
+            throw new Rediska_Transaction_AbortedException('Transaction has been aborted by server');
+        }
+
+        foreach($this->_commands as $i => $command) {
+            $results[] = $command->parseResponses(array($responses[$i]));
+        }
+
+        $this->_reset();
 
         return $results;
     }
@@ -137,17 +164,13 @@ class Rediska_Transaction
      */
     public function discard()
     {
-        if (!$this->isStarted()) {
-            return false;
+        if ($this->_isWatched) {
+            $this->unwatch();
         }
 
-        $discard = new Rediska_Connection_Exec($this->_connection, 'DISCARD');
-        $reply = $discard->execute();
+        $this->_reset();
 
-        $this->_commands = array();
-        $this->_isStarted = false;
-
-        return $reply;
+        return true;
     }
 
     /**
@@ -175,20 +198,13 @@ class Rediska_Transaction
      */
     protected function _addCommand($name, $args = array())
     {
-        $this->start();
-
         $this->_specifiedConnection->setConnection($this->_connection);
 
         $command = Rediska_Commands::get($this->_rediska, $name, $args);
+        $command->initialize();
 
         if (!$command->isAtomic()) {
-            throw new Rediska_Exception("Command '$name' doesn't work properly (not atomic) in pipeline on multiple servers");
-        }
-
-        $command->execute();
-
-        if (!$command->isQueued()) {
-            throw new Rediska_Transaction_Exception("Command not added to transaction!");
+            throw new Rediska_Exception("Command '$name' doesn't work properly (not atomic) in transaction on multiple servers");
         }
 
         $this->_commands[] = $command;
@@ -201,13 +217,27 @@ class Rediska_Transaction
     /**
      * Throw if transaction not supported by Redis
      */
-    protected function _throwIfNotSupported()
+    protected function _throwIfNotSupported($title, $version)
     {
-        $version = '1.3.8';
         $redisVersion = $this->_rediska->getOption('redisVersion');
         if (version_compare($version, $this->_rediska->getOption('redisVersion')) == 1) {
-            throw new Rediska_Transaction_Exception("Transaction requires {$version}+ version of Redis server. Current version is {$redisVersion}. To change it specify 'redisVersion' option.");
+            throw new Rediska_Transaction_Exception("$title requires {$version}+ version of Redis server. Current version is {$redisVersion}. To change it specify 'redisVersion' option.");
         }
+    }
+
+    public function  __toString()
+    {
+        if (empty($this->_commands)) {
+            return 'Empty transaction';
+        } else {
+            return 'Transaction: ' . implode(', ', $this->_commands);
+        }
+    }
+
+    protected function _reset()
+    {
+        $this->_commands = array();
+        $this->_isWatched = false;
     }
 
     /**
@@ -335,6 +365,16 @@ class Rediska_Transaction
     public function set($keyOrData, $valueOrOverwrite = null, $overwrite = true) { $args = func_get_args(); return $this->_addCommand('set', $args); }
 
     /**
+     * Set + Expire atomic command
+     *
+     * @param string  $key      Key name
+     * @param mixed   $value    Value
+     * @param integer $seconds  Expire time in seconds
+     * @return Rediska_Transaction
+     */
+    public function setAndExpire($key, $value, $seconds) { $args = func_get_args(); return $this->_addCommand('setAndExpire', $args); }
+
+    /**
      * Atomic set value and return old 
      *
      * @param string $key   Key name
@@ -352,14 +392,13 @@ class Rediska_Transaction
     public function get($keyOrKeys) { $args = func_get_args(); return $this->_addCommand('get', $args); }
 
     /**
-     * Set + Expire atomic command
+     * Append value to a end of string key
      *
-     * @param string  $key      Key name
-     * @param mixed   $value    Value
-     * @param integer $seconds  Expire time in seconds
+     * @param string $key    Key name
+     * @param mixed  $value  Value
      * @return Rediska_Transaction
      */
-    public function setAndExpire($key, $value, $seconds) { $args = func_get_args(); return $this->_addCommand('setAndExpire', $args); }
+    public function append($key, $value) { $args = func_get_args(); return $this->_addCommand('append', $args); }
 
     /**
      * Increment the number value of key by integer
@@ -380,6 +419,26 @@ class Rediska_Transaction
     public function decrement($key, $amount = 1) { $args = func_get_args(); return $this->_addCommand('decrement', $args); }
 
     /**
+     * Overwrite part of a string at key starting at the specified offset
+     *
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @param integer $value  Value
+     * @return Rediska_Transaction
+     */
+    public function setRange($key, $offset, $value) { $args = func_get_args(); return $this->_addCommand('setRange', $args); }
+
+    /**
+     * Return a subset of the string from offset start to offset end (both offsets are inclusive)
+     *
+     * @param string            $key   Key name
+     * @param integer           $start Start
+     * @param integer[optional] $end   End. If end is omitted, the substring starting from $start until the end of the string will be returned. For default end of string
+     * @return Rediska_Transaction
+     */
+    public function getRange($key, $start, $end = -1) { $args = func_get_args(); return $this->_addCommand('getRange', $args); }
+
+    /**
      * Return a subset of the string from offset start to offset end (both offsets are inclusive)
      *
      * @param string            $key   Key name
@@ -390,31 +449,51 @@ class Rediska_Transaction
     public function substring($key, $start, $end = -1) { $args = func_get_args(); return $this->_addCommand('substring', $args); }
 
     /**
-     * Append value to a end of string key
+     * Returns the bit value at offset in the string value stored at key
      *
-     * @param string $key    Key name
-     * @param mixed  $value  Value
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @param integer $bit    Bit (0 or 1)
      * @return Rediska_Transaction
      */
-    public function append($key, $value) { $args = func_get_args(); return $this->_addCommand('append', $args); }
+    public function setBit($key, $offset, $bit) { $args = func_get_args(); return $this->_addCommand('setBit', $args); }
+
+    /**
+     * Returns the bit value at offset in the string value stored at key
+     *
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @return Rediska_Transaction
+     */
+    public function getBit($key, $offset) { $args = func_get_args(); return $this->_addCommand('getBit', $args); }
+
+    /**
+     * Returns the length of the string value stored at key
+     *
+     * @param string  $key Key name
+     * @return Rediska_Transaction
+     */
+    public function getLength($key) { $args = func_get_args(); return $this->_addCommand('getLength', $args); }
 
     /**
      * Append value to the end of List
      *
-     * @param string $key     Key name
-     * @param mixed  $value   Element value
+     * @param string            $key                Key name
+     * @param mixed             $value              Element value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return Rediska_Transaction
      */
-    public function appendToList($key, $value) { $args = func_get_args(); return $this->_addCommand('appendToList', $args); }
+    public function appendToList($key, $value, $createIfNotExists = true) { $args = func_get_args(); return $this->_addCommand('appendToList', $args); }
 
     /**
      * Append value to the head of List
      *
-     * @param string $key    Key name
-     * @param mixed  $member Member
+     * @param string            $key                Key name
+     * @param mixed             $value              Element value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return Rediska_Transaction
      */
-    public function prependToList($key, $member) { $args = func_get_args(); return $this->_addCommand('prependToList', $args); }
+    public function prependToList($key, $value, $createIfNotExists = true) { $args = func_get_args(); return $this->_addCommand('prependToList', $args); }
 
     /**
      * Return the length of the List value at key
@@ -427,12 +506,14 @@ class Rediska_Transaction
     /**
      * Get List by key
      *
-     * @param string  $key             Key name
-     * @param integer $start[optional] Start index. For default is begin of list
-     * @param integer $end[optional]   End index. For default is end of list
+     * @param string  $key                         Key name
+     * @param integer $start[optional]             Start index. For default is begin of list
+     * @param integer $end[optional]               End index. For default is end of list
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return Rediska_Transaction
      */
-    public function getList($key, $start = 0, $end = -1) { $args = func_get_args(); return $this->_addCommand('getList', $args); }
+    public function getList($key, $start = 0, $end = -1, $responseIterator = false) { $args = func_get_args(); return $this->_addCommand('getList', $args); }
 
     /**
      * Trim the list at key to the specified range of elements
@@ -502,11 +583,43 @@ class Rediska_Transaction
     /**
      * Return and remove the last element of the List at key and block if list is empty or not exists
      *
-     * @param string|array $keyOrKeys         Key name or array of names
-     * @param integer      $timeout[optional] Timeout. Disable for default.
+     * @param string|array $keyOrKeys           Key name or array of names
+     * @param integer      $timeout[optional]   Timeout. 0 for default - timeout is disabled.
+     * @param string       $pushToKey[optional] If not null - push value to another list.
      * @return Rediska_Transaction
      */
-    public function popFromListBlocking($keyOrKeys, $timeout = 0) { $args = func_get_args(); return $this->_addCommand('popFromListBlocking', $args); }
+    public function popFromListBlocking($keyOrKeys, $timeout = 0, $pushToKey = null) { $args = func_get_args(); return $this->_addCommand('popFromListBlocking', $args); }
+
+    /**
+     * Insert a new value as the element before or after the reference value
+     *
+     * @param string  $key            Key name
+     * @param string  $position       BEFORE or AFTER
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return Rediska_Transaction
+     */
+    public function insertToList($key, $position, $referenceValue, $value) { $args = func_get_args(); return $this->_addCommand('insertToList', $args); }
+
+    /**
+     * Insert a new value as the element after the reference value
+     *
+     * @param string  $key            Key name
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return Rediska_Transaction
+     */
+    public function insertToListAfter($key, $referenceValue, $value) { $args = func_get_args(); return $this->_addCommand('insertToListAfter', $args); }
+
+    /**
+     * Insert a new value as the element before the reference value
+     *
+     * @param string  $key            Key name
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return Rediska_Transaction
+     */
+    public function insertToListBefore($key, $referenceValue, $value) { $args = func_get_args(); return $this->_addCommand('insertToListBefore', $args); }
 
     /**
      * Add the specified member to the Set value at key
@@ -582,10 +695,12 @@ class Rediska_Transaction
     /**
      * Return all the members of the Set value at key
      *
-     * @param string $key Key name
+     * @param string  $key Key name
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return Rediska_Transaction
      */
-    public function getSet($key) { $args = func_get_args(); return $this->_addCommand('getSet', $args); }
+    public function getSet($key, $responseIterator = false) { $args = func_get_args(); return $this->_addCommand('getSet', $args); }
 
     /**
      * Move the specified member from one Set to another atomically
@@ -619,14 +734,16 @@ class Rediska_Transaction
     /**
      * Get all the members of the Sorted Set value at key
      *
-     * @param string  $key                  Key name
-     * @param integer $withScores[optional] Return values with scores. For default is false.
-     * @param integer $start[optional]      Start index. For default is begin of set.
-     * @param integer $end[optional]        End index. For default is end of set.
-     * @param boolean $revert[optional]     Revert elements (not used in sorting). For default is false
+     * @param string  $key                         Key name
+     * @param integer $withScores[optional]        Return values with scores. For default is false.
+     * @param integer $start[optional]             Start index. For default is begin of set.
+     * @param integer $end[optional]               End index. For default is end of set.
+     * @param boolean $revert[optional]            Revert elements (not used in sorting). For default is false
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return Rediska_Transaction
      */
-    public function getSortedSet($key, $withScores = false, $start = 0, $end = -1, $revert = false) { $args = func_get_args(); return $this->_addCommand('getSortedSet', $args); }
+    public function getSortedSet($key, $withScores = false, $start = 0, $end = -1, $revert = false, $responseIterator = false) { $args = func_get_args(); return $this->_addCommand('getSortedSet', $args); }
 
     /**
      * Get members from sorted set by min and max score
@@ -812,14 +929,23 @@ class Rediska_Transaction
      * Get sorted elements contained in the List, Set, or Sorted Set value at key.
      *
      * @param string        $key   Key name
-     * @param string|array  $value Options or SORT query string (http://code.google.com/p/redis/wiki/SortCommand).
-     *                             Important notes for SORT query string:
-     *                                 1. If you set Rediska namespace option don't forget add it to key names.
-     *                                 2. If you use more then one connection to Redis servers, it will choose by key name,
-     *                                    and key by you pattern's may not present on it.
+     * @param array         $value Options:
+     *                               * order
+     *                               * limit
+     *                               * offset
+     *                               * alpha
+     *                               * get
+     *                               * by
+     *                               * store
+     *
+     *                              See more: http://code.google.com/p/redis/wiki/SortCommand
+
+     *                              If you use more then one connection to Redis servers,
+     *                              it will choose by key name, and key by you pattern's may not present on it.
+     *
      * @return Rediska_Transaction
      */
-    public function sort($key, $options = array()) { $args = func_get_args(); return $this->_addCommand('sort', $args); }
+    public function sort($key, array $options = array()) { $args = func_get_args(); return $this->_addCommand('sort', $args); }
 
     /**
      * Publish message to pubsub channel

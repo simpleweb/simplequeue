@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -37,9 +37,9 @@ abstract class Rediska_Key_Abstract extends Rediska_Options_RediskaInstance
      * @var array
      */
     protected $_options = array(
-        'serveralias'       => null,
+        'serverAlias'       => null,
         'expire'            => null,
-        'expireistimestamp' => false,
+        'expireIsTimestamp' => false,
     );
 
     /**
@@ -194,6 +194,10 @@ abstract class Rediska_Key_Abstract extends Rediska_Options_RediskaInstance
      */
     public function setExpire($secondsOrTimestamp, $isTimestamp = false)
     {
+        if ($secondsOrTimestamp !== null) {
+            trigger_error('Expire option is deprecated, because expire behaviour was changed in Redis 2.2. Use expire method instead.', E_USER_WARNING);
+        }
+
         $this->_options['expire'] = $secondsOrTimestamp;
         $this->_options['expireIsTimestamp'] = $isTimestamp;
         

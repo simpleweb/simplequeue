@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -32,8 +32,10 @@ class Rediska_Command_DeleteFromSortedSet extends Rediska_Command_Abstract
 
         $member = $this->_rediska->getSerializer()->serialize($member);
         
-        $command = array('ZREM', "{$this->_rediska->getOption('namespace')}$key", $member);
-        
+        $command = array('ZREM',
+                         $this->_rediska->getOption('namespace') . $key,
+                         $member);
+
         return new Rediska_Connection_Exec($connection, $command);
     }
 

@@ -71,7 +71,7 @@ class Simple_Worker
 
     protected function _callJob($message)
     {
-        $msg = $message->body;
+        $msg = json_decode($message->body);
 
         if(!isset($msg->attempt)) {
             $msg->attempt = 1;

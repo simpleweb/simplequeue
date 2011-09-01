@@ -192,7 +192,6 @@ class Simple_Worker
 
     protected function log()
     {
-        $timestamp = date('r');
         foreach (func_get_args() as $arg) {
             syslog(LOG_INFO, $arg);
         }

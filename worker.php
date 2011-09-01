@@ -17,7 +17,7 @@ class Simple_Worker
 
     public function __construct($config)
     {
-        $this->log("SimpleWorker v".self::VERSION);
+        openlog("SimpleWorker v".self::VERSION, LOG_PID | LOG_PERROR, LOG_LOCAL0);
 
         if (is_array($config)) {
             $this->_config = new Zend_Config($config);
@@ -194,7 +194,7 @@ class Simple_Worker
     {
         $timestamp = date('r');
         foreach (func_get_args() as $arg) {
-            echo "[{$timestamp}] $arg\n";
+            syslog(LOG_INFO, $arg);
         }
     }
 }

@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -22,15 +22,14 @@ class Rediska_Command_SetToList extends Rediska_Command_Abstract
      */
     public function create($key, $index, $member)
     {
-        if (!is_integer($index)) {
-            throw new Rediska_Command_Exception("Index must be integer");
-        }
-
         $connection = $this->_rediska->getConnectionByKeyName($key);
 
         $member = $this->_rediska->getSerializer()->serialize($member);
 
-        $command = "LSET {$this->_rediska->getOption('namespace')}$key $index " . strlen($member) . Rediska::EOL . $member;
+        $command = array('LSET',
+                         $this->_rediska->getOption('namespace') . $key,
+                         $index,
+                         $member);
 
         return new Rediska_Connection_Exec($connection, $command);
     }

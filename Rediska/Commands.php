@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -37,13 +37,18 @@ class Rediska_Commands
 
         // Commands operating on string values
         'set'          => 'Rediska_Command_Set',
+        'setandexpire' => 'Rediska_Command_SetAndExpire',
         'setandget'    => 'Rediska_Command_SetAndGet',
         'get'          => 'Rediska_Command_Get',
-        'setandexpire' => 'Rediska_Command_SetAndExpire',
+        'append'       => 'Rediska_Command_Append',
         'increment'    => 'Rediska_Command_Increment',
         'decrement'    => 'Rediska_Command_Decrement',
-        'substring'    => 'Rediska_Command_Substring',
-        'append'       => 'Rediska_Command_Append',
+        'setrange'     => 'Rediska_Command_SetRange',
+        'getrange'     => 'Rediska_Command_GetRange',
+        'substring'    => 'Rediska_Command_GetRange',
+        'setbit'       => 'Rediska_Command_SetBit',
+        'getbit'       => 'Rediska_Command_GetBit',
+        'getlength'    => 'Rediska_Command_GetLength',
 
         // Commands operating on lists
         'appendtolist'          => 'Rediska_Command_AppendToList',
@@ -58,6 +63,9 @@ class Rediska_Commands
         'shiftfromlistblocking' => 'Rediska_Command_ShiftFromListBlocking',
         'popfromlist'           => 'Rediska_Command_PopFromList',
         'popfromlistblocking'   => 'Rediska_Command_PopFromListBlocking',
+        'inserttolist'          => 'Rediska_Command_InsertToList',
+        'inserttolistafter'     => 'Rediska_Command_InsertToListAfter',
+        'inserttolistbefore'    => 'Rediska_Command_InsertToListBefore',
 
         // Commands operating on sets
         'addtoset'         => 'Rediska_Command_AddToSet',

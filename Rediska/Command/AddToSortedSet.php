@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -33,7 +33,10 @@ class Rediska_Command_AddToSortedSet extends Rediska_Command_Abstract
 
         $member = $this->_rediska->getSerializer()->serialize($member);
 
-        $command = array('ZADD', "{$this->_rediska->getOption('namespace')}$key", $score, $member);
+        $command = array('ZADD',
+                         $this->_rediska->getOption('namespace') . $key,
+                         $score,
+                         $member);
 
         return new Rediska_Connection_Exec($connection, $command);
     }

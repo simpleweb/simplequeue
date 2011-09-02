@@ -9,11 +9,11 @@ require_once dirname(__FILE__) . '/../../../Rediska.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage ZendFrameworkIntegration
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
-class Rediska_Zend_Session_Set extends Rediska_Key_Set
+class Rediska_Zend_Session_Set extends Rediska_Key_SortedSet
 {
     /**
      * Save handler instance

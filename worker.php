@@ -1,12 +1,12 @@
 <?php
 
 /**
-* Worker class, harvests urls from the queue and curls 'em
-*
-* @author Chris Mytton
-* @package ContactZilla
-* @subpackage Queue
-*/
+ * Worker class, harvests urls from the queue and curls 'em
+ *
+ * @author Chris Mytton
+ * @package ContactZilla
+ * @subpackage Queue
+ */
 class Simple_Worker
 {
     const VERSION = '0.1.0';
@@ -17,7 +17,7 @@ class Simple_Worker
 
     public function __construct($config)
     {
-        $this->log("SimpleWorker v".self::VERSION);
+        openlog("SimpleWorker v".self::VERSION, LOG_PID | LOG_PERROR, LOG_LOCAL0);
 
         if (is_array($config)) {
             $this->_config = new Zend_Config($config);
@@ -58,62 +58,61 @@ class Simple_Worker
             }
         }
     }
-    
+
     public function iterateQueues() {
-		
-		$queue = $this->queue;
+
+        $queue = $this->queue;
 
         foreach ($queue->getQueues() as $name) {
             $this->log($name);
         }
-		
-	}
+
+    }
 
     protected function _callJob($message)
     {
-		$msg = $message->body;
+        $msg = json_decode($message->body);
 
-		if(!isset($msg->attempt)) {
-			$msg->attempt = 1;
-		} else {
-			$msg->attempt += 1;
-		}
-		
+        if(!isset($msg->attempt)) {
+            $msg->attempt = 1;
+        } else {
+            $msg->attempt += 1;
+        }
+
         $this->log("Attempting to retrieve {$msg->url}");
 
-		$client = new Zend_Http_Client($msg->url);
-        
+        $client = new Zend_Http_Client($msg->url);
 
         // 10 minute timout for those long running jobs!
-		$timeout = (15 * 60);
-		if(isset($msg->timeout)) {
-			$timeout = $msg->timeout;
-		}
-		
-		$client->setConfig(array('timeout' => $timeout, 'maxredirects' => 5));
-		
-		//Deal with headers
-		if(!isset($msg->headers)) {
-			$msg->headers = array();
-		} else {
+        $timeout = (10 * 60);
+        if(isset($msg->timeout)) {
+            $timeout = $msg->timeout;
+        }
+
+        $client->setConfig(array('timeout' => $timeout, 'maxredirects' => 5));
+
+        //Deal with headers
+        if(!isset($msg->headers)) {
+            $msg->headers = array();
+        } else {
             $msg->headers = (array) $msg->headers;
         }
-		
-    	if(!isset($msg->headers["User-Agent"])) {
-			$msg->headers["User-Agent"] = 'Simplequeue';
-		}
-        	
-		if(!isset($msg->headers['Cache-Control'])) {
-			$msg->headers['Cache-Control'] = 'no-cache';
-		}
-				
-    	if(!isset($msg->headers['Connection'])) {
-			$msg->headers['Connection'] = 'Keep-Alive';
+
+        if(!isset($msg->headers["User-Agent"])) {
+            $msg->headers["User-Agent"] = 'Simplequeue';
         }
-		
-		foreach($msg->headers as $key => $value) {
-			$client->setHeaders($key, $value);
-		}
+
+        if(!isset($msg->headers['Cache-Control'])) {
+            $msg->headers['Cache-Control'] = 'no-cache';
+        }
+
+        if(!isset($msg->headers['Connection'])) {
+            $msg->headers['Connection'] = 'Keep-Alive';
+        }
+
+        foreach($msg->headers as $key => $value) {
+            $client->setHeaders($key, $value);
+        }
 
         if (isset($msg->get)) {
             $client->setParameterGet((array) $msg->get);
@@ -126,50 +125,50 @@ class Simple_Worker
             $client->setMethod(Zend_Http_Client::GET);
         }
 
-		try
-		{
-			//Request the remote page.
-			$response = $client->request();
-			$status = $response->getStatus();
+        try
+        {
+            //Request the remote page.
+            $response = $client->request();
+            $status = $response->getStatus();
 
-		} catch (Exception $e) {
-			
-			$status = $e->getCode() . ' - ' . $e->getMessage() . "\n";
-		}
+        } catch (Exception $e) {
+
+            $status = $e->getCode() . ' - ' . $e->getMessage() . "\n";
+        }
 
         if (isset($response)) {
             $body = $response->getBody();
             if (!empty($body)) {
                 $this->log($body);
             }
-		}
+        }
 
-   		if($status==200) {
-			$this->log('200 - Success (Deleting Message From Queue)');
-			$msg->suceededAt = date('r');
-			$msg->queue = $this->queue->getName();
+        if($status==200) {
+            $this->log('200 - Success (Deleting Message From Queue)');
+            $msg->suceededAt = date('r');
+            $msg->queue = $this->queue->getName();
             $this->_successQueue->send($msg);
-			$this->queue->deleteMessage($message);
-		} else {
-			$this->log("{$status} - Failed.");
+            $this->queue->deleteMessage($message);
+        } else {
+            $this->log("{$status} - Failed.");
 
-			$this->queue->deleteMessage($message);
-			
-			$maxRetries = 5;
-			if(isset($msg->maxretries)) {
-				$maxRetries = $msg->maxretries;
-			}
-		
-			//Put back on to queue if we haven't hit max retries.
-			if($msg->attempt < $maxRetries) {
-				$this->queue->send($msg, time() + 300);
-			} else {
+            $this->queue->deleteMessage($message);
+
+            $maxRetries = 5;
+            if(isset($msg->maxretries)) {
+                $maxRetries = $msg->maxretries;
+            }
+
+            //Put back on to queue if we haven't hit max retries.
+            if($msg->attempt < $maxRetries) {
+                $this->queue->send($msg, time() + 300);
+            } else {
                 $this->_failQueue->send($msg);
             }
-			
-		}
-			
-			
+
+        }
+
+
     }
 
     protected function _setup()
@@ -182,7 +181,7 @@ class Simple_Worker
 
         $this->log("Using config {$config}");
         $options = $this->_config->{$config}->toArray();
-        
+
         $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
 
         $options['name'] = $options['successQueue'];
@@ -190,12 +189,11 @@ class Simple_Worker
         $options['name'] = $options['failQueue'];
         $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
-    
+
     protected function log()
     {
-        $timestamp = date('r');
         foreach (func_get_args() as $arg) {
-            echo "[{$timestamp}] $arg\n";
+            syslog(LOG_INFO, $arg);
         }
     }
 }

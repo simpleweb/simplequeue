@@ -29,7 +29,7 @@ require_once 'Zend/Session/SaveHandler/Exception.php';
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage ZendFrameworkIntegration
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -48,10 +48,10 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
      * @var array
      */
     protected $_options = array(
-        'keyprefix'      => 'PHPSESSIONS_',
-        'lifetime'       => null,
+        'keyPrefix' => 'PHPSESSIONS_',
+        'lifetime'  => null,
     );
-    
+
     /**
      * Exception class name for options
      * 
@@ -71,28 +71,23 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
         }
 
         // Set default lifetime
-        $this->_options['lifetime'] = (integer)ini_get('session.gc_maxlifetime');
+        if (!isset($options['lifetime'])) {
+            $lifetime = (int)ini_get('session.gc_maxlifetime');
 
-        // Get Rediska instance
-        if (isset($options['rediskaOptions'])) {
-            throw new Zend_Session_SaveHandler_Exception("Option 'rediskaOptions' is deprecated. Use 'rediska' option. It may be Rediska object, instance name or options for new instance");
+            if ($lifetime != 0) {
+                $options['lifetime'] = $lifetime;
+            } else {
+                trigger_error(
+                    "Please set session.gc_maxlifetime to enable garbage collection.",
+                    E_USER_WARNING
+                );
+            }
         }
 
         parent::__construct($options);
 
         Rediska_Zend_Session_Set::setSaveHandler($this);
-
         $this->_set = new Rediska_Zend_Session_Set();
-    }
-
-    /**
-     * Destructor
-     *
-     * @return void
-     */
-    public function __destruct()
-    {
-        Zend_Session::writeClose();
     }
 
     /**
@@ -137,15 +132,18 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
      */
     public function write($id, $data)
     {
-        $this->_set[] = $id;
-
-        $reply = $this->getRediska()->set($this->_getKeyName($id), $data);
-
-        if ($reply) {
-            $this->getRediska()->expire($this->_getKeyName($id), $this->_options['lifetime']);
+        try {
+            $timestamp = time();
+            $this->_set[$timestamp] = $id;
+        } catch (Rediska_Connection_Exec_Exception $e) {
+            $this->_deleteSetOrThrowException($e);
         }
 
-        return $reply;
+        return $this->getRediska()->setAndExpire(
+            $this->_getKeyName($id),
+            $data,
+            $this->getOption('lifetime')
+        );
     }
 
     /**
@@ -156,11 +154,13 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
      */
     public function destroy($id)
     {
-        $this->_set->remove($id);
+        try {
+            $this->_set->remove($id);
+        } catch(Rediska_Connection_Exec_Exception $e) {
+            $this->_deleteSetOrThrowException($e);
+        }
 
-        $this->getRediska()->delete($this->_getKeyName($id));
-
-        return true;
+        return $this->getRediska()->delete($this->_getKeyName($id));
     }
 
     /**
@@ -171,24 +171,11 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
      */
     public function gc($maxlifetime)
     {
-        $sessions = $this->_set->toArray();
-
-        if (!empty($sessions)) {
-            foreach($sessions as &$session) {
-                $session = $this->_getKeyName($session);
-            }
-    
-            // TODO: May by use TTL? Need benchmark.
-            $lifeSession = $this->getRediska()->get($sessions);
-            foreach($sessions as $session) {
-                if (!isset($lifeSession[$session])) {
-                    $sessionWithoutPrefix = substr($session, strlen($this->_options['keyprefix']));
-                    $this->_set->remove($sessionWithoutPrefix);
-                }
-            }
+        try {
+            return $this->_set->removeByScore(0, time() - $this->getOption('lifetime'));
+        } catch(Rediska_Connection_Exec_Exception $e) {
+            $this->_deleteSetOrThrowException($e);
         }
-
-        return true;
     }
 
     /**
@@ -198,6 +185,32 @@ class Rediska_Zend_Session_SaveHandler_Redis extends Rediska_Options_RediskaInst
      */
     protected function _getKeyName($id)
     {
-        return $this->_options['keyprefix'] . $id;
+        return $this->getOption('keyPrefix') . $id;
+    }
+
+    /**
+     * Delete old set or throw exception
+     *
+     * @throws Rediska_Connection_Exec_Exception
+     * @param Rediska_Connection_Exec_Exception $e
+     * @return void
+     */
+    protected function _deleteSetOrThrowException(Rediska_Connection_Exec_Exception $e)
+    {
+        if ($e->getMessage() == 'Operation against a key holding the wrong kind of value') {
+            $this->_set->delete();
+        } else {
+            throw $e;
+        }
+    }
+
+    /**
+     * Destructor
+     *
+     * @return void
+     */
+    public function __destruct()
+    {
+        Zend_Session::writeClose();
     }
 }

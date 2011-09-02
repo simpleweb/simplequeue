@@ -5,7 +5,7 @@
  *
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -87,11 +87,7 @@ class Rediska_Autoloader
 
         $path = self::getRediskaPath() . '/' . str_replace('_', '/', $className) . '.php';
 
-        if (!file_exists($path)) {
-            return false;
-        }
-
-        require_once $path;
+        return include $path;
     }
 
     /**

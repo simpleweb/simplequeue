@@ -5,11 +5,11 @@ require_once dirname(__FILE__) . '/../../Rediska.php';
 
 /**
  * Rediska List key
- * 
+ *
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Key objects
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -18,12 +18,13 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     /**
      * Append value to the end of List
      *
-     * @param mixed $value Value
+     * @param mixed             $value              Value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return boolean
      */
-    public function append($value)
+    public function append($value, $createIfNotExists = true)
     {
-        $result = $this->_getRediskaOn()->appendToList($this->getName(), $value);
+        $result = $this->_getRediskaOn()->appendToList($this->getName(), $value, $createIfNotExists);
 
         if (!is_null($this->getExpire()) && $result) {
             $this->expire($this->getExpire(), $this->isExpireTimestamp());
@@ -35,12 +36,13 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     /**
      * Append value to the head of List
      *
-     * @param mixed $value Value
+     * @param mixed             $value              Value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return boolean
      */
-    public function prepend($value)
+    public function prepend($value, $createIfNotExists = true)
     {
-        $result = $this->_getRediskaOn()->prependToList($this->getName(), $value);
+        $result = $this->_getRediskaOn()->prependToList($this->getName(), $value, $createIfNotExists);
 
         if (!is_null($this->getExpire()) && $result) {
             $this->expire($this->getExpire(), $this->isExpireTimestamp());
@@ -51,7 +53,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
     /**
      * Get List length
-     * 
+     *
      * @return integer
      */
     public function getLength()
@@ -61,7 +63,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
     /**
      * Trim the list at key to the specified range of elements
-     * 
+     *
      * @param integer $start Start index
      * @param integer $end End index
      * @return boolean
@@ -79,7 +81,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
     /**
      * Return element of List by index
-     * 
+     *
      * @param integer $index Index
      * @return mixed
      */
@@ -87,10 +89,10 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     {
         return $this->_getRediskaOn()->getFromList($this->getName(), $index);
     }
-    
+
     /**
      * Set a new value as the element at index position of the List
-     * 
+     *
      * @param integer $index Index
      * @param mixed $value Value
      * @return boolean
@@ -105,10 +107,47 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
         return $result;
     }
-    
+
+    /**
+     * Insert a new value as the element after the reference value
+     *
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insertAfter($referenceValue, $value)
+    {
+        return $this->_getRediskaOn()->insertToListAfter($this->getName(), $referenceValue, $value);
+    }
+
+    /**
+     * Insert a new value as the element before the reference value
+     *
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insertBefore($referenceValue, $value)
+    {
+        return $this->_getRediskaOn()->insertToListBefore($this->getName(), $referenceValue, $value);
+    }
+
+    /**
+     * Insert a new value as the element before or after the reference value
+     *
+     * @param string  $position       BEFORE or AFTER
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insert($position, $referenceValue, $value)
+    {
+        return $this->_getRediskaOn()->insertToList($this->getName(), $position, $referenceValue, $value);
+    }
+
     /**
      * Delete element from list by value
-     * 
+     *
      * @throws Rediska_Exception
      * @param $value Element value
      * @param $count Limit of deleted items
@@ -124,10 +163,10 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
         return $result;
     }
-    
+
     /**
      * Return and remove the first element of the List
-     * 
+     *
      * @return mixed
      */
     public function shift()
@@ -140,10 +179,10 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
         return $result;
     }
-    
+
     /**
      * Return and remove the first element of the List and block if list empty or not exists
-     * 
+     *
      * @param $timeout Blocking timeout
      * @return mixed
      */
@@ -160,7 +199,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
     /**
      * Return and remove the last element of the List
-     * 
+     *
      * @param string|Rediska_Key_List $pushTo After pop, push value to another list
      * @return mixed
      */
@@ -180,14 +219,15 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     }
 
     /**
-     * Return and remove the last element of the List and block if list empty or not exists
-     * 
-     * @param $timeout Blocking timeout
+     * Return and remove the last element of the List and block if list empty or not exists.
+     *
+     * @param integer $timeout[optional]   Blocking timeout. 0 for default - timeout is disabled.
+     * @param string  $pushToKey[optional] If not null - push value to another list.
      * @return mixed
      */
-    public function popBlocking($timeout = 0)
+    public function popBlocking($timeout = 0, $pushToKey = null)
     {
-        $result = $this->_getRediskaOn()->popFromListBlocking($this->getName(), $timeout);
+        $result = $this->_getRediskaOn()->popFromListBlocking($this->getName(), $timeout, $pushToKey);
 
         if (!is_null($this->getExpire()) && $result) {
             $this->expire($this->getExpire(), $this->isExpireTimestamp());
@@ -195,10 +235,24 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
         return $result;
     }
-    
+
+    /**
+     * Get List values
+     *
+     * @param integer $start                       Start index
+     * @param integer $end                         End index
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created
+     * @return array
+     */
+    public function getValues($start = 0, $end = -1, $responseIterator = false)
+    {
+        return $this->_getRediskaOn()->getList($this->getName(), $start, $end, $responseIterator);
+    }
+
     /**
      * Get sorted the elements
-     * 
+     *
      * @param string|array  $value Options or SORT query string (http://code.google.com/p/redis/wiki/SortCommand).
      *                             Important notes for SORT query string:
      *                                 1. If you set Rediska namespace option don't forget add it to key names.
@@ -210,22 +264,24 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
     {
         return $this->_getRediskaOn()->sort($this->getName(), $options);
     }
-    
+
     /**
      * Get List values
-     * 
-     * @param integer $start Start index
-     * @param integer $end   End index
+     *
+     * @param integer $start                       Start index
+     * @param integer $end                         End index
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created
      * @return array
      */
-    public function toArray($start = 0, $end = -1)
+    public function toArray($start = 0, $end = -1, $responseIterator = false)
     {
-        return $this->_getRediskaOn()->getList($this->getName(), $start, $end);
+        return $this->getValues($start, $end, $responseIterator);
     }
-    
+
     /**
      * Add array to List
-     * 
+     *
      * @param array $array
      */
     public function fromArray(array $array)
@@ -243,7 +299,7 @@ class Rediska_Key_List extends Rediska_Key_Abstract implements IteratorAggregate
 
         return true;
     }
-    
+
     /**
      * Implement intrefaces
      */

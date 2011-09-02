@@ -10,7 +10,7 @@ Rediska_Autoloader::register();
  * 
  * @author Ivan Shumkov
  * @package Rediska
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -28,7 +28,7 @@ class Rediska extends Rediska_Options
      * 
      * @var string
      */
-    const STABLE_REDIS_VERSION = '2.0';
+    const STABLE_REDIS_VERSION = '2.2.1';
 
     /**
      * Default client name
@@ -54,16 +54,23 @@ class Rediska extends Rediska_Options
     /**
      * Object for distribution keys by servers 
      * 
-     * @var Rediska_KeyDistributor_Abstract
+     * @var Rediska_KeyDistributor_Interface
      */
     protected $_keyDistributor;
-    
+
     /**
      * Serializer object
      * 
-     * @var Rediska_Serializer_Interface
+     * @var Rediska_Serializer
      */
     protected $_serializer;
+
+    /**
+     * Profiler object
+     *
+     * @var Rediska_Profiler
+     */
+    protected $_profiler;
 
     /**
      * Configuration
@@ -85,11 +92,18 @@ class Rediska extends Rediska_Options
      *                     or you personal implementation (option value - name of class
      *                     which implements Rediska_KeyDistributor_Interface).
      * redisVersion      - Redis server version for command specification.
+     * profiler          - Rediska profiler. Disable for default. Don't use it on production!
+     *                     Value of this option may be:
+     *                         * True or false
+     *                         * Object wich implements Rediska_Profiler_Interface
+     *                         * Array with key 'name' wich value is name of profiler ('stream' for example)
+     *                           or class name wich implements Rediska_Profiler_Interface. Other keys passed
+     *                           as options to profiler
      *
      * @var array
      */
     protected $_options = array(
-        'addtomanager' => true,
+        'addToManager' => true,
         'name'         => self::DEFAULT_NAME,
         'namespace'    => '',
         'servers'      => array(
@@ -99,9 +113,10 @@ class Rediska extends Rediska_Options
                 'weight' => Rediska_Connection::DEFAULT_WEIGHT,
             )
         ),
-        'serializeradapter' => 'phpSerialize',
-        'keydistributor'    => 'consistentHashing',
-        'redisversion'      => self::STABLE_REDIS_VERSION,
+        'serializerAdapter' => 'phpSerialize',
+        'keyDistributor'    => 'consistentHashing',
+        'redisVersion'      => self::STABLE_REDIS_VERSION,
+        'profiler'          => false,
     );
 
     /**
@@ -126,6 +141,13 @@ class Rediska extends Rediska_Options
      *                     or you personal implementation (option value - name of class
      *                     which implements Rediska_KeyDistributor_Interface).
      * redisVersion      - Redis server version for command specification.
+     * profiler          - Rediska profiler. Disable for default. Don't use it on production!
+     *                     Value of this option may be:
+     *                         * True or false
+     *                         * Object wich implements Rediska_Profiler_Interface
+     *                         * Array with key 'name' wich value is name of profiler ('stream' for example)
+     *                           or class name wich implements Rediska_Profiler_Interface. Other keys passed
+     *                           as options to profiler
      * 
      */
     public function __construct(array $options = array()) 
@@ -145,7 +167,7 @@ class Rediska extends Rediska_Options
     {
         $this->_options['name'] = $name;
 
-        if ($this->_options['addtomanager']) {
+        if ($this->_options['addToManager']) {
             Rediska_Manager::add($this);
         }
 
@@ -221,6 +243,31 @@ class Rediska extends Rediska_Options
                 $connectionString,
                 isset($options['weight']) ? $options['weight'] : Rediska_Connection::DEFAULT_WEIGHT
             );
+        }
+
+        return $this;
+    }
+
+    /**
+     * Remove server
+     *
+     * @param  $alias
+     * @return void
+     */
+    public function removeServer($aliasOrConnection)
+    {
+        if ($aliasOrConnection instanceof Rediska_Connection) {
+            $alias = $aliasOrConnection->getAlias();
+        }
+
+        if (!isset($this->_connections[$alias])) {
+            throw new Rediska_Exception("Can't find connection '$alias'");
+        }
+
+        unset($this->_connections[$alias]);
+
+        if ($this->_keyDistributor) {
+            $this->_keyDistributor->removeConnection($alias);
         }
 
         return $this;
@@ -401,7 +448,7 @@ class Rediska extends Rediska_Options
      */
     public function setKeyDistributor($name)
     {
-        $this->_options['keydistributor'] = $name;
+        $this->_options['keyDistributor'] = $name;
 
         if (is_object($name)) {
             $this->_keyDistributor = $name;
@@ -436,7 +483,7 @@ class Rediska extends Rediska_Options
      */
     public function setSerializerAdapter($adapter)
     {
-        $this->_options['serializeradapter'] = $adapter;
+        $this->_options['serializerAdapter'] = $adapter;
         $this->_serializer = null;
 
         return $this;
@@ -449,11 +496,67 @@ class Rediska extends Rediska_Options
      */
     public function getSerializer()
     {
-        if (!$this->_serializer) {
-            $this->_serializer = new Rediska_Serializer($this->_options['serializeradapter']);
+        if ($this->_serializer === null) {
+            $this->_serializer = new Rediska_Serializer($this->_options['serializerAdapter']);
         }
 
         return $this->_serializer;
+    }
+
+    /**
+     * Set profiler
+     *
+     * @param Rediska_Profiler|array $profilerOrOptions Profiler object or array of options
+     * @return Rediska
+     */
+    public function setProfiler($profilerOrOptions)
+    {
+        $this->_options['profiler'] = $profilerOrOptions;
+        $this->_profiler = null;
+        
+        return $this;
+    }
+
+    /**
+     * Get profiler
+     *
+     * @return Rediska_Profiler
+     */
+    public function getProfiler()
+    {
+        if (!$this->_profiler) {
+            if ($this->_options['profiler'] === false) {
+                $this->_profiler = new Rediska_Profiler_Null();
+            } else if ($this->_options['profiler'] === true) {
+                $this->_profiler = new Rediska_Profiler();
+            } else if (is_array($this->_options['profiler'])) {
+                if (!isset($this->_options['profiler']['name'])) {
+                    throw new Rediska_Exception("You must specify profiler 'name'.");
+                } else if (in_array($this->_options['profiler']['name'], array('stream'))) {
+                    $name = ucfirst($this->_options['profiler']['name']);
+                    $className = "Rediska_Profiler_$name";
+                    unset($this->_options['profiler']['name']);
+                    $this->_profiler = new $className($this->_options['profiler']);
+                } else if (@class_exists($this->_options['profiler']['name'])) {
+                    $className = $this->_options['profiler']['name'];
+                    unset($this->_options['profiler']['name']);
+                    $this->_profiler = new $className($this->_options['profiler']);
+                } else {
+                    throw new Rediska_Exception("Profiler '{$this->_options['profiler']['name']}' not found. You need include it before or setup autoload.");
+                }
+            } elseif (is_object($this->_options['profiler'])) {
+                $this->_profiler = $this->_options['profiler'];
+            } else {
+                throw new Rediska_Exception("Profiler option must be a boolean, object or array of options");
+            }
+
+            if (!$this->_profiler instanceof Rediska_Profiler_Interface) {
+                $profilerClass = get_class($this->_profiler);
+                throw new Rediska_Serializer_Exception("Profiler '$profilerClass' must implement Rediska_Profiler_Interface");
+            }
+        }
+
+        return $this->_profiler;
     }
 
     /**
@@ -476,12 +579,16 @@ class Rediska extends Rediska_Options
      * @return mixed
      */
     protected function _executeCommand($name, $args = array())
-    {
+    {        
         $this->_specifiedConnection->resetConnection();
 
         $command = Rediska_Commands::get($this, $name, $args);
 
+        $this->getProfiler()->start($command);
+
         $response = $command->execute();
+
+        $this->getProfiler()->stop();
 
         unset($command);
 
@@ -679,6 +786,16 @@ class Rediska extends Rediska_Options
     public function set($keyOrData, $valueOrOverwrite = null, $overwrite = true) { $args = func_get_args(); return $this->_executeCommand('set', $args); }
 
     /**
+     * Set + Expire atomic command
+     *
+     * @param string  $key      Key name
+     * @param mixed   $value    Value
+     * @param integer $seconds  Expire time in seconds
+     * @return mixed
+     */
+    public function setAndExpire($key, $value, $seconds) { $args = func_get_args(); return $this->_executeCommand('setAndExpire', $args); }
+
+    /**
      * Atomic set value and return old 
      *
      * @param string $key   Key name
@@ -696,14 +813,13 @@ class Rediska extends Rediska_Options
     public function get($keyOrKeys) { $args = func_get_args(); return $this->_executeCommand('get', $args); }
 
     /**
-     * Set + Expire atomic command
+     * Append value to a end of string key
      *
-     * @param string  $key      Key name
-     * @param mixed   $value    Value
-     * @param integer $seconds  Expire time in seconds
+     * @param string $key    Key name
+     * @param mixed  $value  Value
      * @return mixed
      */
-    public function setAndExpire($key, $value, $seconds) { $args = func_get_args(); return $this->_executeCommand('setAndExpire', $args); }
+    public function append($key, $value) { $args = func_get_args(); return $this->_executeCommand('append', $args); }
 
     /**
      * Increment the number value of key by integer
@@ -724,41 +840,81 @@ class Rediska extends Rediska_Options
     public function decrement($key, $amount = 1) { $args = func_get_args(); return $this->_executeCommand('decrement', $args); }
 
     /**
+     * Overwrite part of a string at key starting at the specified offset
+     *
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @param integer $value  Value
+     * @return mixed
+     */
+    public function setRange($key, $offset, $value) { $args = func_get_args(); return $this->_executeCommand('setRange', $args); }
+
+    /**
      * Return a subset of the string from offset start to offset end (both offsets are inclusive)
      *
      * @param string            $key   Key name
      * @param integer           $start Start
      * @param integer[optional] $end   End. If end is omitted, the substring starting from $start until the end of the string will be returned. For default end of string
-     * @return mixed
+     * @return mixin
+     */
+    public function getRange($key, $start, $end = -1) { $args = func_get_args(); return $this->_executeCommand('getRange', $args); }
+
+    /**
+     * Return a subset of the string from offset start to offset end (both offsets are inclusive)
+     *
+     * @param string            $key   Key name
+     * @param integer           $start Start
+     * @param integer[optional] $end   End. If end is omitted, the substring starting from $start until the end of the string will be returned. For default end of string
+     * @return mixin
      */
     public function substring($key, $start, $end = -1) { $args = func_get_args(); return $this->_executeCommand('substring', $args); }
 
     /**
-     * Append value to a end of string key
+     * Returns the bit value at offset in the string value stored at key
      *
-     * @param string $key    Key name
-     * @param mixed  $value  Value
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @param integer $bit    Bit (0 or 1)
      * @return mixed
      */
-    public function append($key, $value) { $args = func_get_args(); return $this->_executeCommand('append', $args); }
+    public function setBit($key, $offset, $bit) { $args = func_get_args(); return $this->_executeCommand('setBit', $args); }
+
+    /**
+     * Returns the bit value at offset in the string value stored at key
+     *
+     * @param string  $key    Key name
+     * @param integer $offset Offset
+     * @return mixed
+     */
+    public function getBit($key, $offset) { $args = func_get_args(); return $this->_executeCommand('getBit', $args); }
+
+    /**
+     * Returns the length of the string value stored at key
+     *
+     * @param string  $key Key name
+     * @return mixed
+     */
+    public function getLength($key) { $args = func_get_args(); return $this->_executeCommand('getLength', $args); }
 
     /**
      * Append value to the end of List
      *
-     * @param string $key     Key name
-     * @param mixed  $value   Element value
+     * @param string            $key                Key name
+     * @param mixed             $value              Element value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return mixed
      */
-    public function appendToList($key, $value) { $args = func_get_args(); return $this->_executeCommand('appendToList', $args); }
+    public function appendToList($key, $value, $createIfNotExists = true) { $args = func_get_args(); return $this->_executeCommand('appendToList', $args); }
 
     /**
      * Append value to the head of List
      *
-     * @param string $key    Key name
-     * @param mixed  $member Member
+     * @param string            $key                Key name
+     * @param mixed             $value              Element value
+     * @param boolean[optional] $createIfNotExists  Create list if not exists
      * @return mixed
      */
-    public function prependToList($key, $member) { $args = func_get_args(); return $this->_executeCommand('prependToList', $args); }
+    public function prependToList($key, $value, $createIfNotExists = true) { $args = func_get_args(); return $this->_executeCommand('prependToList', $args); }
 
     /**
      * Return the length of the List value at key
@@ -771,12 +927,14 @@ class Rediska extends Rediska_Options
     /**
      * Get List by key
      *
-     * @param string  $key             Key name
-     * @param integer $start[optional] Start index. For default is begin of list
-     * @param integer $end[optional]   End index. For default is end of list
+     * @param string  $key                         Key name
+     * @param integer $start[optional]             Start index. For default is begin of list
+     * @param integer $end[optional]               End index. For default is end of list
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return array
      */
-    public function getList($key, $start = 0, $end = -1) { $args = func_get_args(); return $this->_executeCommand('getList', $args); }
+    public function getList($key, $start = 0, $end = -1, $responseIterator = false) { $args = func_get_args(); return $this->_executeCommand('getList', $args); }
 
     /**
      * Trim the list at key to the specified range of elements
@@ -846,11 +1004,43 @@ class Rediska extends Rediska_Options
     /**
      * Return and remove the last element of the List at key and block if list is empty or not exists
      *
-     * @param string|array $keyOrKeys         Key name or array of names
-     * @param integer      $timeout[optional] Timeout. Disable for default.
+     * @param string|array $keyOrKeys           Key name or array of names
+     * @param integer      $timeout[optional]   Timeout. 0 for default - timeout is disabled.
+     * @param string       $pushToKey[optional] If not null - push value to another list.
      * @return mixed
      */
-    public function popFromListBlocking($keyOrKeys, $timeout = 0) { $args = func_get_args(); return $this->_executeCommand('popFromListBlocking', $args); }
+    public function popFromListBlocking($keyOrKeys, $timeout = 0, $pushToKey = null) { $args = func_get_args(); return $this->_executeCommand('popFromListBlocking', $args); }
+
+    /**
+     * Insert a new value as the element before or after the reference value
+     *
+     * @param string  $key            Key name
+     * @param string  $position       BEFORE or AFTER
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insertToList($key, $position, $referenceValue, $value) { $args = func_get_args(); return $this->_executeCommand('insertToList', $args); }
+
+    /**
+     * Insert a new value as the element after the reference value
+     *
+     * @param string  $key            Key name
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insertToListAfter($key, $referenceValue, $value) { $args = func_get_args(); return $this->_executeCommand('insertToListAfter', $args); }
+
+    /**
+     * Insert a new value as the element before the reference value
+     *
+     * @param string  $key            Key name
+     * @param mixed   $referenceValue Reference value
+     * @param mixed   $value          Value
+     * @return integer|boolean
+     */
+    public function insertToListBefore($key, $referenceValue, $value) { $args = func_get_args(); return $this->_executeCommand('insertToListBefore', $args); }
 
     /**
      * Add the specified member to the Set value at key
@@ -926,10 +1116,12 @@ class Rediska extends Rediska_Options
     /**
      * Return all the members of the Set value at key
      *
-     * @param string $key Key name
+     * @param string  $key Key name
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return array
      */
-    public function getSet($key) { $args = func_get_args(); return $this->_executeCommand('getSet', $args); }
+    public function getSet($key, $responseIterator = false) { $args = func_get_args(); return $this->_executeCommand('getSet', $args); }
 
     /**
      * Move the specified member from one Set to another atomically
@@ -963,14 +1155,16 @@ class Rediska extends Rediska_Options
     /**
      * Get all the members of the Sorted Set value at key
      *
-     * @param string  $key                  Key name
-     * @param integer $withScores[optional] Return values with scores. For default is false.
-     * @param integer $start[optional]      Start index. For default is begin of set.
-     * @param integer $end[optional]        End index. For default is end of set.
-     * @param boolean $revert[optional]     Revert elements (not used in sorting). For default is false
+     * @param string  $key                         Key name
+     * @param integer $withScores[optional]        Return values with scores. For default is false.
+     * @param integer $start[optional]             Start index. For default is begin of set.
+     * @param integer $end[optional]               End index. For default is end of set.
+     * @param boolean $revert[optional]            Revert elements (not used in sorting). For default is false
+     * @param boolean $responseIterator[optional]  If true - command return iterator which read from socket buffer.
+     *                                             Important: new connection will be created 
      * @return array
      */
-    public function getSortedSet($key, $withScores = false, $start = 0, $end = -1, $revert = false) { $args = func_get_args(); return $this->_executeCommand('getSortedSet', $args); }
+    public function getSortedSet($key, $withScores = false, $start = 0, $end = -1, $revert = false, $responseIterator = false) { $args = func_get_args(); return $this->_executeCommand('getSortedSet', $args); }
 
     /**
      * Get members from sorted set by min and max score
@@ -1156,14 +1350,23 @@ class Rediska extends Rediska_Options
      * Get sorted elements contained in the List, Set, or Sorted Set value at key.
      *
      * @param string        $key   Key name
-     * @param string|array  $value Options or SORT query string (http://code.google.com/p/redis/wiki/SortCommand).
-     *                             Important notes for SORT query string:
-     *                                 1. If you set Rediska namespace option don't forget add it to key names.
-     *                                 2. If you use more then one connection to Redis servers, it will choose by key name,
-     *                                    and key by you pattern's may not present on it.
+     * @param array         $value Options:
+     *                               * order
+     *                               * limit
+     *                               * offset
+     *                               * alpha
+     *                               * get
+     *                               * by
+     *                               * store
+     *
+     *                              See more: http://code.google.com/p/redis/wiki/SortCommand
+
+     *                              If you use more then one connection to Redis servers,
+     *                              it will choose by key name, and key by you pattern's may not present on it.
+     *
      * @return array
      */
-    public function sort($key, $options = array()) { $args = func_get_args(); return $this->_executeCommand('sort', $args); }
+    public function sort($key, array $options = array()) { $args = func_get_args(); return $this->_executeCommand('sort', $args); }
 
     /**
      * Publish message to pubsub channel

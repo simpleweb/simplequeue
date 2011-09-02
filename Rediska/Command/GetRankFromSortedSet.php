@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -34,7 +34,7 @@ class Rediska_Command_GetRankFromSortedSet extends Rediska_Command_Abstract
         $member = $this->_rediska->getSerializer()->serialize($member);
 
         $command = array($revert ? 'ZREVRANK' : 'ZRANK',
-                         "{$this->_rediska->getOption('namespace')}$key",
+                         $this->_rediska->getOption('namespace') . $key,
                          $member);
 
         return new Rediska_Connection_Exec($connection, $command);

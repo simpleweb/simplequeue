@@ -6,7 +6,7 @@
  * @author Ivan Shumkov
  * @package Rediska
  * @subpackage Commands
- * @version 0.5.1
+ * @version 0.5.6
  * @link http://rediska.geometria-lab.net
  * @license http://www.opensource.org/licenses/bsd-license.php
  */
@@ -21,7 +21,7 @@ class Rediska_Command_GetLastSaveTime extends Rediska_Command_Abstract
      */
     public function create() 
     {
-        $command = "LASTSAVE";
+        $command = array('LASTSAVE');
         $commands = array();
         foreach($this->_rediska->getConnections() as $connection) {
             $this->_connections[] = $connection->getAlias();

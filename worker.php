@@ -119,7 +119,8 @@ class Simple_Worker
         }
 
         if(isset($msg->post) && !empty($msg->post)) {
-            $client->setParameterPost((array) $msg->post);
+            $client->setRawData(Zend_Json::encode((array) $msg->post));
+            $client->setHeaders(Zend_Http_Client::CONTENT_TYPE, 'application/json');
             $client->setMethod(Zend_Http_Client::POST);
         } else {
             $client->setMethod(Zend_Http_Client::GET);

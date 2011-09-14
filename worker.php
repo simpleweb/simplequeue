@@ -120,8 +120,8 @@ class Simple_Worker
 
         if(isset($msg->post) && !empty($msg->post)) {
             
-            //A very dark hour for me and Chris - where is our data vanishing?
-            if($this->_config->encodebody) {
+            //A very dark hour for me and Chris - where is our data vanishing
+            if($this->options['encodebody']) {
                 $client->setRawData(Zend_Json::encode((array) $msg->post));
                 $client->setHeaders(Zend_Http_Client::CONTENT_TYPE, 'application/json');
             } else {
@@ -188,13 +188,13 @@ class Simple_Worker
         }
 
         $this->log("Using config {$config}");
-        $options = $this->_config->{$config}->toArray();
+        $this->options = $this->_config->{$config}->toArray();
 
         $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
 
-        $options['name'] = $options['successQueue'];
+        $this->options['name'] = $this->options['successQueue'];
         $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
-        $options['name'] = $options['failQueue'];
+        $this->options['name'] = $this->options['failQueue'];
         $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
     }
 

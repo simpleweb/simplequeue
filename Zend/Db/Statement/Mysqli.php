@@ -15,9 +15,9 @@
  * @category   Zend
  * @package    Zend_Db
  * @subpackage Statement
- * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2011 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Mysqli.php 20096 2010-01-06 02:05:09Z bkarwin $
+ * @version    $Id: Mysqli.php 23775 2011-03-01 17:25:24Z ralph $
  */
 
 
@@ -33,7 +33,7 @@ require_once 'Zend/Db/Statement.php';
  * @category   Zend
  * @package    Zend_Db
  * @subpackage Statement
- * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2011 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Db_Statement_Mysqli extends Zend_Db_Statement
@@ -65,7 +65,6 @@ class Zend_Db_Statement_Mysqli extends Zend_Db_Statement
      */
     public function _prepare($sql)
     {
-		$this->_debug = $sql;
         $mysqli = $this->_adapter->getConnection();
 
         $this->_stmt = $mysqli->prepare($sql);
@@ -212,10 +211,6 @@ class Zend_Db_Statement_Mysqli extends Zend_Db_Statement
              * @see Zend_Db_Statement_Mysqli_Exception
              */
             require_once 'Zend/Db/Statement/Mysqli/Exception.php';
-			/*var_dump($this->_debug); 
-			var_dump($params); 
-			var_dump($this->_stmt->error);
-			die;*/
             throw new Zend_Db_Statement_Mysqli_Exception("Mysqli statement execute error : " . $this->_stmt->error, $this->_stmt->errno);
         }
 

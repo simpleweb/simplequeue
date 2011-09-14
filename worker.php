@@ -190,12 +190,12 @@ class Simple_Worker
         $this->log("Using config {$config}");
         $this->options = $this->_config->{$config}->toArray();
 
-        $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+        $this->queue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($this->options), $this->options);
 
         $this->options['name'] = $this->options['successQueue'];
-        $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+        $this->_successQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($this->options), $this->options);
         $this->options['name'] = $this->options['failQueue'];
-        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($options), $options);
+        $this->_failQueue = new Zend_Queue(new Rediska_Zend_Queue_Adapter_Redis($this->options), $this->options);
     }
 
     protected function log()

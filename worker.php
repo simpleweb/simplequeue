@@ -115,22 +115,19 @@ class Simple_Worker
         }
 
         if (isset($msg->get)) {
-            $client->setParameterGet((array) $msg->get);
-            
-            $this->log('GET DATA - ' . var_export($msg->get, true));
-            $this->log('GET DATA JSON - ' . Zend_Json::encode((array) $msg->get));
-            
+            $client->setParameterGet((array) $msg->get);            
         }
 
         if(isset($msg->post) && !empty($msg->post)) {
-            /*
-            $client->setRawData(Zend_Json::encode((array) $msg->post));
-            $client->setHeaders(Zend_Http_Client::CONTENT_TYPE, 'application/json');
-            */
-            $this->log('POST DATA - ' . var_export($msg->post, true));
-            $this->log('POST DATA JSON - ' . Zend_Json::encode((array) $msg->post));
             
-            $client->setParameterPost((array) $msg->post);
+            //A very dark hour for me and Chris - where is our data vanishing?
+            if($this->_config->encodebody) {
+                $client->setRawData(Zend_Json::encode((array) $msg->post));
+                $client->setHeaders(Zend_Http_Client::CONTENT_TYPE, 'application/json');
+            } else {
+                $client->setParameterPost((array) $msg->post);                
+            }
+            
             $client->setMethod(Zend_Http_Client::POST);
         } else {
             $client->setMethod(Zend_Http_Client::GET);
